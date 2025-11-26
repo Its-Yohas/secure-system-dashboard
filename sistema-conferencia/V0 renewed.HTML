@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure System - Modular v3.1 (Com Relatórios)</title>
+
+    <style>
+        /* --- 1. RESET & LAYOUT --- */
+        :root { --primary: #00a79d; --dark: #262626; --light: #f4f6f8; --border: #e0e0e0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { height: 100vh; display: flex; background: var(--light); overflow: hidden; }
+
+        /* --- 2. SIDEBAR --- */
+        .sidebar { width: 260px; background: var(--dark); color: #fff; display: flex; flex-direction: column; flex-shrink: 0; }
+        .sidebar-header { height: 60px; background: var(--primary); display: flex; align-items: center; padding-left: 20px; font-weight: bold; font-size: 18px; letter-spacing: 1px; }
+        
+        .menu-scroll { flex: 1; overflow-y: auto; padding-top: 10px; }
+        .menu-label { font-size: 11px; color: #666; font-weight: bold; padding: 15px 20px 5px; text-transform: uppercase; }
+        
+        .menu-btn { padding: 12px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; border-left: 4px solid transparent; color: #ccc; font-size: 14px; }
+        .menu-btn:hover { background: #333; color: #fff; }
+        .menu-btn.active { border-left-color: var(--primary); background: #333; color: #fff; font-weight: 600; }
+        
+        .submenu { display: none; background: #1a1a1a; }
+        .submenu.open { display: block; }
+        .sub-btn { padding: 10px 20px 10px 45px; font-size: 13px; color: #888; cursor: pointer; display: block; }
+        .sub-btn:hover { color: #fff; background: #2a2a2a; }
+        .arrow { font-size: 10px; transition: 0.2s; }
+        .arrow.rot { transform: rotate(90deg); }
+
+        .sidebar-footer { padding: 15px; border-top: 1px solid #333; display:flex; flex-direction:column; gap:5px; }
+        .btn-foot { background: transparent; border: 1px solid #555; color: #ccc; padding: 8px; width: 100%; border-radius: 4px; cursor: pointer; font-size: 11px; transition:0.2s; }
+        .btn-foot:hover { background: #444; color: white; }
+        .btn-reset { border-color: #d32f2f; color: #d32f2f; }
+        .btn-reset:hover { background: #d32f2f; }
+
+        /* --- 3. MAIN CONTENT --- */
+        .main { flex: 1; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+        
+        /* Views (Telas) */
+        .view { display: none; width: 100%; height: 100%; overflow-y: auto; animation: fadeIn 0.3s; }
+        .view.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- 4. COMPONENTES UI --- */
+        /* Hero */
+        .hero { width: 100%; height: 100%; background: url('https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80') center/cover; position: relative; }
+        .hero-overlay { position: absolute; inset: 0; background: linear-gradient(135deg, rgba(0, 167, 157, 0.9), rgba(30, 200, 180, 0.7)); display: flex; flex-direction: column; justify-content: center; padding-left: 60px; color: white; }
+        
+        /* Containers */
+        .container { max-width: 1000px; margin: 0 auto; padding: 40px; padding-bottom: 100px; }
+        .header { margin-bottom: 25px; border-bottom: 1px solid #ddd; padding-bottom: 10px; }
+        .title { font-size: 24px; color: #333; }
+
+        /* Forms */
+        .card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        .row { display: flex; gap: 15px; align-items: flex-end; margin-bottom: 15px; }
+        
+        label { display: block; font-size: 11px; font-weight: bold; color: #666; margin-bottom: 5px; text-transform: uppercase; }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; outline: none; font-size: 13px; }
+        input:focus, select:focus { border-color: var(--primary); }
+        textarea { resize: vertical; min-height: 80px; }
+
+        /* Buttons */
+        .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color: white; font-size: 13px; }
+        .btn-primary { background: var(--primary); } .btn-primary:hover { filter: brightness(0.9); }
+        .btn-danger { background: #ef4444; } .btn-danger:hover { filter: brightness(0.9); }
+        .btn-sm { padding: 5px 10px; font-size: 11px; }
+
+        /* Lists */
+        .list { list-style: none; border: 1px solid #eee; border-radius: 4px; overflow: hidden; }
+        .list-item { background: white; padding: 12px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .list-item:last-child { border-bottom: none; }
+        .badge { background: #eee; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: bold; color: #555; margin-left: 8px; }
+
+        /* OS Card Details */
+        .os-card { border-left: 4px solid #ccc; margin-bottom: 15px; padding: 15px; background: white; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .os-card.st-pendente { border-left-color: #ef4444; } 
+        .os-card.st-andamento { border-left-color: #3b82f6; } 
+        .os-card.st-concluida { border-left-color: #10b981; opacity: 0.7; }
+
+        /* Reports Stats */
+        .stat-box { text-align: center; padding: 20px; }
+        .stat-num { font-size: 32px; font-weight: bold; color: #333; margin-bottom: 5px; }
+        .stat-label { font-size: 12px; color: #777; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* Modal */
+        .modal-mask { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; justify-content: center; align-items: center; }
+        .modal-mask.active { display: flex; }
+        .modal-box { background: white; width: 500px; max-height: 90vh; overflow-y: auto; border-radius: 8px; padding: 25px; }
+    </style>
+</head>
+<body>
+
+    <input type="file" id="file-import" style="display:none" accept=".json" onchange="DB.import(this)">
+
+    <nav class="sidebar">
+        <div class="sidebar-header">Secure System v3.1</div>
+        <div class="menu-scroll">
+            
+            <div class="menu-btn" onclick="Nav.go('hero')">Início</div>
+            
+            <div class="menu-btn" onclick="Nav.toggle('sub-check', this)">Checklist <span class="arrow">▶</span></div>
+            <div id="sub-check" class="submenu">
+                </div>
+
+            <div class="menu-btn" onclick="Nav.go('os')">Manutenção (O.S.)</div>
+            <div class="menu-btn" onclick="Nav.go('reports')">Relatórios</div>
+            <div class="menu-btn" style="opacity:0.5">OEA (Em breve)</div>
+
+            <div class="menu-label">Administração</div>
+            <div class="menu-btn" onclick="Nav.toggle('sub-admin', this)">Cadastros <span class="arrow">▶</span></div>
+            <div id="sub-admin" class="submenu">
+                <div class="sub-btn" onclick="Nav.go('adm-units')">1. Unidades</div>
+                <div class="sub-btn" onclick="Nav.go('adm-cats')">2. Categorias</div>
+                <div class="sub-btn" onclick="Nav.go('adm-equip')">3. Equipamentos</div>
+            </div>
+        </div>
+        <div class="sidebar-footer">
+            <button class="btn-foot" onclick="DB.export()">EXPORTAR DADOS (Backup)</button>
+            <button class="btn-foot" onclick="document.getElementById('file-import').click()">IMPORTAR DADOS</button>
+            <button class="btn-foot btn-reset" onclick="DB.nuke()">RESETAR SISTEMA</button>
+        </div>
+    </nav>
+
+    <main class="main">
+
+        <div id="view-hero" class="view active">
+            <div class="hero">
+                <div class="hero-overlay">
+                    <h1 style="font-size:40px; margin-bottom:10px">Bem-vindo</h1>
+                    <p style="font-size:20px; opacity:0.9">Sistema de Gestão de Segurança</p>
+                    <div style="margin-top:20px; display:flex; gap:10px">
+                        <button class="btn" style="background:white; color:var(--primary)" onclick="Nav.go('os')">Abrir O.S.</button>
+                        <button class="btn" style="border:1px solid white" onclick="Nav.go('reports')">Ver Relatórios</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-adm-units" class="view">
+            <div class="container">
+                <div class="header"><h2 class="title">Gerenciar Unidades</h2></div>
+                <div class="card row">
+                    <input id="unit-name" style="flex:1" placeholder="Nome da Unidade (ex: Fábrica Matriz)">
+                    <button class="btn btn-primary" onclick="UnitMod.add()">Adicionar</button>
+                </div>
+                <ul id="list-units" class="list"></ul>
+            </div>
+        </div>
+
+        <div id="view-adm-cats" class="view">
+            <div class="container">
+                <div class="header"><h2 class="title">Gerenciar Categorias</h2></div>
+                <div class="card row">
+                    <input id="cat-name" style="flex:1" placeholder="Tipo (ex: Câmera, Catraca)">
+                    <button class="btn btn-primary" onclick="CatMod.add()">Adicionar</button>
+                </div>
+                <ul id="list-cats" class="list"></ul>
+            </div>
+        </div>
+
+        <div id="view-adm-equip" class="view">
+            <div class="container">
+                <div class="header"><h2 class="title">Gerenciar Equipamentos</h2></div>
+                <div class="card">
+                    <div class="grid-3">
+                        <div><label>Unidade</label><select id="eq-site"></select></div>
+                        <div><label>Tipo</label><select id="eq-cat"></select></div>
+                        <div><label>Nome</label><input id="eq-name" placeholder="Ex: Hall"></div>
+                    </div>
+                    <div class="row">
+                        <div style="width:100px"><label>Qtd</label><input type="number" id="eq-qty" value="1" min="1"></div>
+                        <button class="btn btn-primary" style="margin-bottom:0" onclick="EquipMod.add()">Salvar</button>
+                    </div>
+                </div>
+                <div class="header" style="display:flex; justify-content:space-between;">
+                    <h3>Lista Mestre</h3>
+                    <select id="eq-filter" style="width:200px" onchange="EquipMod.render()"></select>
+                </div>
+                <ul id="list-equips" class="list"></ul>
+            </div>
+        </div>
+
+        <div id="view-os" class="view">
+            <div class="container">
+                <div class="header"><h2 class="title">Ordem de Serviço</h2></div>
+                <div class="card">
+                    <div class="menu-label" style="padding-left:0; margin-bottom:10px; color:var(--primary)">1. Abertura</div>
+                    <div class="grid-3">
+                        <div><label>Tipo</label><select id="os-type"><option>Corretiva</option><option>Preventiva</option><option>Melhoria</option></select></div>
+                        <div><label>Unidade</label><select id="os-site" onchange="OSMod.updateEq()"></select></div>
+                        <div><label>Equipamento</label><select id="os-equip"><option>...</option></select></div>
+                    </div>
+                    <div class="grid-3">
+                        <div><label>Técnico</label><input id="os-tech"></div>
+                        <div><label>Solicitante</label><input id="os-req"></div>
+                        <div><label>Tempo Est.</label><input id="os-time"></div>
+                    </div>
+                    <div class="grid-2">
+                        <div><label>Descrição do Defeito</label><textarea id="os-desc"></textarea></div>
+                        <div><label>Materiais/Ferramentas</label><textarea id="os-mat"></textarea></div>
+                    </div>
+                    <div class="grid-2">
+                         <div><label>Procedimentos</label><textarea id="os-proc"></textarea></div>
+                         <div><label>Emissor</label><input id="os-emit"></div>
+                    </div>
+                    <button class="btn btn-primary" style="width:100%" onclick="OSMod.add()">Emitir O.S.</button>
+                </div>
+                <h3>Histórico</h3>
+                <div id="list-os"></div>
+            </div>
+        </div>
+
+        <div id="view-checklist" class="view">
+            <div class="container">
+                <div class="header"><h2 class="title" id="check-title">Checklist</h2></div>
+                <ul id="list-check" class="list"></ul>
+            </div>
+        </div>
+
+        <div id="view-reports" class="view">
+            <div class="container">
+                <div class="header"><h2 class="title">Relatórios & Indicadores</h2></div>
+                
+                <div class="grid-3">
+                    <div class="card stat-box" style="border-bottom: 4px solid var(--primary)">
+                        <div id="rep-total" class="stat-num">0</div>
+                        <div class="stat-label">Total O.S.</div>
+                    </div>
+                    <div class="card stat-box" style="border-bottom: 4px solid #ef4444">
+                        <div id="rep-open" class="stat-num">0</div>
+                        <div class="stat-label">Pendentes</div>
+                    </div>
+                    <div class="card stat-box" style="border-bottom: 4px solid #10b981">
+                        <div id="rep-done" class="stat-num">0</div>
+                        <div class="stat-label">Concluídas</div>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="card">
+                        <h3>Eficiência Operacional</h3>
+                        <p style="margin-top:10px; color:#666">Taxa de conclusão global:</p>
+                        <div style="background:#eee; height:20px; border-radius:10px; margin-top:5px; overflow:hidden">
+                            <div id="rep-bar" style="width:0%; background:#10b981; height:100%; transition:1s"></div>
+                        </div>
+                        <div id="rep-perc" style="text-align:right; font-size:12px; font-weight:bold; margin-top:5px">0%</div>
+                    </div>
+                    <div class="card">
+                        <h3>Distribuição por Unidade</h3>
+                        <ul id="rep-list-units" class="list" style="margin-top:10px; max-height:150px; overflow-y:auto; border:none"></ul>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <div id="modal-edit" class="modal-mask">
+        <div class="modal-box">
+            <h3>Editar Itens</h3>
+            <div id="modal-body" style="margin:20px 0"></div>
+            <div style="text-align:right"><button class="btn" onclick="Modal.close()">Cancelar</button> <button class="btn btn-primary" onclick="Modal.save()">Salvar</button></div>
+        </div>
+    </div>
+
+    <div id="modal-finish" class="modal-mask">
+        <div class="modal-box">
+            <h3>Concluir O.S.</h3>
+            <label>Resultado Final</label><textarea id="os-res" style="width:100%; margin-bottom:10px"></textarea>
+            <div style="text-align:right"><button class="btn" onclick="document.getElementById('modal-finish').classList.remove('active')">Cancelar</button> <button class="btn btn-primary" onclick="OSMod.confirmFinish()">Concluir</button></div>
+        </div>
+    </div>
+
+
+    <script>
+        
+        // --- 1. CORE: DATABASE (DB) + BACKUP ---
+        const DB = {
+            get: (key, def) => { try { return JSON.parse(localStorage.getItem(key)) || def; } catch { return def; } },
+            set: (key, val) => localStorage.setItem(key, JSON.stringify(val)),
+            nuke: () => { if(confirm("ATENÇÃO: Isso apagará todos os dados locais. Continuar?")) { localStorage.clear(); location.reload(); } },
+            
+            // Função de Backup (Exportar)
+            export: () => {
+                const data = JSON.stringify(localStorage);
+                const blob = new Blob([data], {type: 'application/json'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'backup_seguranca_' + new Date().toISOString().slice(0,10) + '.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            },
+
+            // Função de Restore (Importar)
+            import: (input) => {
+                const file = input.files[0];
+                if(!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if(confirm("Isso substituirá os dados atuais pelos do arquivo. Confirmar?")){
+                            localStorage.clear();
+                            for (let key in data) {
+                                localStorage.setItem(key, data[key]);
+                            }
+                            alert("Importação concluída com sucesso!");
+                            location.reload();
+                        }
+                    } catch (err) {
+                        alert("Erro ao ler arquivo de backup.");
+                    }
+                };
+                reader.readAsText(file);
+            }
+        };
+
+        // --- 2. CORE: NAVIGATION (Nav) ---
+        const Nav = {
+            go: (viewId) => {
+                document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+                document.getElementById('view-' + viewId).classList.add('active');
+                
+                // Triggers
+                if(viewId === 'adm-units') UnitMod.render();
+                if(viewId === 'adm-cats') CatMod.render();
+                if(viewId === 'adm-equip') EquipMod.initView();
+                if(viewId === 'os') OSMod.initView();
+                if(viewId === 'reports') ReportMod.render(); // Novo trigger
+            },
+            toggle: (subId, btn) => {
+                const el = document.getElementById(subId);
+                const arrow = btn.querySelector('.arrow');
+                if(el.classList.contains('open')) {
+                    el.classList.remove('open');
+                    if(arrow) arrow.classList.remove('rot');
+                } else {
+                    el.classList.add('open');
+                    if(arrow) arrow.classList.add('rot');
+                }
+            }
+        };
+
+        // --- 3. MODULE: UNITS ---
+        const UnitMod = {
+            data: [],
+            load: () => { UnitMod.data = DB.get('sys_db_units', []); },
+            add: () => {
+                const val = document.getElementById('unit-name').value;
+                if(val){ UnitMod.data.push(val); DB.set('sys_db_units', UnitMod.data); document.getElementById('unit-name').value=''; UnitMod.render(); }
+            },
+            remove: (val) => { if(confirm('Del?')){ UnitMod.data = UnitMod.data.filter(x=>x!==val); DB.set('sys_db_units', UnitMod.data); UnitMod.render(); } },
+            render: () => {
+                document.getElementById('list-units').innerHTML = UnitMod.data.map(u => 
+                    `<li class="list-item">${u} <button class="btn btn-sm btn-danger" onclick="UnitMod.remove('${u}')">X</button></li>`
+                ).join('');
+                
+                const menu = document.getElementById('sub-check');
+                menu.innerHTML = UnitMod.data.length ? UnitMod.data.map(u => 
+                    `<div class="sub-btn" onclick="CheckMod.open('${u}')">📄 ${u}</div>`
+                ).join('') : '<div class="sub-btn">Sem unidades</div>';
+            }
+        };
+
+        // --- 4. MODULE: CATEGORIES ---
+        const CatMod = {
+            data: [],
+            load: () => { CatMod.data = DB.get('sys_db_cats', ['Câmera', 'Catraca']); },
+            add: () => {
+                const val = document.getElementById('cat-name').value;
+                if(val){ CatMod.data.push(val); DB.set('sys_db_cats', CatMod.data); document.getElementById('cat-name').value=''; CatMod.render(); }
+            },
+            remove: (val) => { if(confirm('Del?')){ CatMod.data = CatMod.data.filter(x=>x!==val); DB.set('sys_db_cats', CatMod.data); CatMod.render(); } },
+            render: () => {
+                document.getElementById('list-cats').innerHTML = CatMod.data.map(u => 
+                    `<li class="list-item">${u} <button class="btn btn-sm btn-danger" onclick="CatMod.remove('${u}')">X</button></li>`
+                ).join('');
+            }
+        };
+
+        // --- 5. MODULE: EQUIPMENT ---
+        const EquipMod = {
+            data: [],
+            load: () => { EquipMod.data = DB.get('sys_db_equips', []); },
+            initView: () => {
+                const sSite = document.getElementById('eq-site');
+                const sCat = document.getElementById('eq-cat');
+                const sFilt = document.getElementById('eq-filter');
+                
+                sSite.innerHTML = ''; sFilt.innerHTML = '<option value="all">Todos</option>';
+                UnitMod.data.forEach(u => { 
+                    sSite.innerHTML += `<option>${u}</option>`; 
+                    sFilt.innerHTML += `<option>${u}</option>`;
+                });
+                
+                sCat.innerHTML = '';
+                CatMod.data.forEach(c => sCat.innerHTML += `<option>${c}</option>`);
+                
+                EquipMod.render();
+            },
+            add: () => {
+                const s = document.getElementById('eq-site').value;
+                const c = document.getElementById('eq-cat').value;
+                const n = document.getElementById('eq-name').value;
+                const q = document.getElementById('eq-qty').value;
+                if(!s || !c || !n) return alert("Preencha tudo");
+                
+                let subs = []; for(let i=1; i<=q; i++) subs.push(`${c} ${i<10?'0'+i:i}`);
+                EquipMod.data.push({ id: Date.now(), site:s, cat:c, name:n, qty:q, subs:subs });
+                DB.set('sys_db_equips', EquipMod.data);
+                EquipMod.render();
+                document.getElementById('eq-name').value = '';
+            },
+            remove: (id) => { if(confirm('Del?')){ EquipMod.data = EquipMod.data.filter(x=>x.id!==id); DB.set('sys_db_equips', EquipMod.data); EquipMod.render(); } },
+            render: () => {
+                const filter = document.getElementById('eq-filter').value;
+                const list = document.getElementById('list-equips');
+                list.innerHTML = '';
+                
+                const filtered = EquipMod.data.filter(e => filter === 'all' ? true : e.site === filter);
+                
+                filtered.forEach(e => {
+                    list.innerHTML += `
+                    <li class="list-item">
+                        <div><strong>${e.site}</strong> [${e.cat}] ${e.name} <span class="badge">${e.qty}</span></div>
+                        <div>
+                            <button class="btn btn-sm btn-primary" onclick="Modal.open(${e.id})">Nomes</button>
+                            <button class="btn btn-sm btn-danger" onclick="EquipMod.remove(${e.id})">X</button>
+                        </div>
+                    </li>`;
+                });
+            }
+        };
+
+        // --- 6. MODULE: CHECKLIST ---
+        const CheckMod = {
+            open: (unit) => {
+                Nav.go('checklist');
+                document.getElementById('check-title').textContent = "Checklist: " + unit;
+                const list = document.getElementById('list-check');
+                list.innerHTML = '';
+                
+                const items = EquipMod.data.filter(e => e.site === unit);
+                if(items.length === 0) list.innerHTML = '<li class="list-item">Vazio</li>';
+                
+                items.forEach(e => {
+                    list.innerHTML += `<li class="list-item" style="background:#eee; font-weight:bold">${e.name} (${e.cat})</li>`;
+                    e.subs.forEach(s => {
+                        list.innerHTML += `
+                        <li class="list-item" style="padding-left:30px">
+                            ${s}
+                            <select style="padding:5px"><option>OK</option><option>Defeito</option></select>
+                        </li>`;
+                    });
+                });
+            }
+        };
+
+        // --- 7. MODULE: O.S. ---
+        const OSMod = {
+            data: [],
+            tempId: null,
+            load: () => { OSMod.data = DB.get('sys_db_os', []); },
+            initView: () => {
+                const s = document.getElementById('os-site');
+                s.innerHTML = '<option value="">Selecione Unidade...</option>';
+                UnitMod.data.forEach(u => s.innerHTML += `<option>${u}</option>`);
+                OSMod.render();
+            },
+            updateEq: () => {
+                const site = document.getElementById('os-site').value;
+                const eq = document.getElementById('os-equip');
+                eq.innerHTML = '<option>...</option>';
+                EquipMod.data.filter(e => e.site === site).forEach(e => eq.innerHTML += `<option>${e.name}</option>`);
+            },
+            add: () => {
+                const form = {
+                    id: Date.now(),
+                    type: document.getElementById('os-type').value,
+                    site: document.getElementById('os-site').value,
+                    equip: document.getElementById('os-equip').value,
+                    tech: document.getElementById('os-tech').value,
+                    req: document.getElementById('os-req').value,
+                    time: document.getElementById('os-time').value,
+                    desc: document.getElementById('os-desc').value,
+                    mat: document.getElementById('os-mat').value,
+                    proc: document.getElementById('os-proc').value,
+                    emit: document.getElementById('os-emit').value,
+                    status: 'pendente',
+                    dateEmit: new Date().toLocaleString(),
+                    res: ''
+                };
+                if(!form.site || !form.equip || !form.desc) return alert("Preencha o básico");
+                OSMod.data.unshift(form);
+                DB.set('sys_db_os', OSMod.data);
+                OSMod.render();
+                alert("O.S. Criada");
+            },
+            status: (id, st) => {
+                const i = OSMod.data.findIndex(x=>x.id===id);
+                if(i!==-1) {
+                    if(st === 'concluida') {
+                        OSMod.tempId = id;
+                        document.getElementById('modal-finish').classList.add('active');
+                    } else {
+                        OSMod.data[i].status = st;
+                        DB.set('sys_db_os', OSMod.data);
+                        OSMod.render();
+                    }
+                }
+            },
+            confirmFinish: () => {
+                const res = document.getElementById('os-res').value;
+                const i = OSMod.data.findIndex(x=>x.id===OSMod.tempId);
+                if(i!==-1 && res) {
+                    OSMod.data[i].status = 'concluida';
+                    OSMod.data[i].res = res;
+                    DB.set('sys_db_os', OSMod.data);
+                    OSMod.render();
+                    document.getElementById('modal-finish').classList.remove('active');
+                }
+            },
+            render: () => {
+                const div = document.getElementById('list-os');
+                div.innerHTML = '';
+                OSMod.data.forEach(o => {
+                    let btn = '';
+                    if(o.status === 'pendente') btn = `<button class="btn btn-sm btn-primary" onclick="OSMod.status(${o.id},'andamento')">Iniciar</button>`;
+                    else if(o.status === 'andamento') btn = `<button class="btn btn-sm btn-primary" style="background:#10b981" onclick="OSMod.status(${o.id},'concluida')">Concluir</button>`;
+                    
+                    div.innerHTML += `
+                    <div class="os-card st-${o.status}">
+                        <div style="display:flex; justify-content:space-between; border-bottom:1px dashed #eee; padding-bottom:5px; margin-bottom:5px;">
+                            <strong>#${o.id} [${o.status.toUpperCase()}]</strong>
+                            <small>${o.dateEmit}</small>
+                        </div>
+                        <div class="grid-2" style="font-size:13px; color:#555">
+                            <div>
+                                <b>Local:</b> ${o.site} - ${o.equip}<br>
+                                <b>Téc:</b> ${o.tech} | <b>Tempo:</b> ${o.time}
+                            </div>
+                            <div>
+                                <b>Defeito:</b> ${o.desc}<br>
+                                <b>Mat:</b> ${o.mat}
+                            </div>
+                        </div>
+                        ${o.res ? `<div style="background:#f9f9f9; padding:5px; margin-top:5px; font-size:12px"><b>Resultado:</b> ${o.res}</div>` : ''}
+                        <div style="text-align:right; margin-top:10px">${btn}</div>
+                    </div>`;
+                });
+            }
+        };
+
+        // --- 8. MODULE: REPORTS (NOVO) ---
+        const ReportMod = {
+            render: () => {
+                const total = OSMod.data.length;
+                const done = OSMod.data.filter(x => x.status === 'concluida').length;
+                const open = total - done;
+                const perc = total > 0 ? Math.round((done/total)*100) : 0;
+
+                // Atualiza Números
+                document.getElementById('rep-total').innerText = total;
+                document.getElementById('rep-open').innerText = open;
+                document.getElementById('rep-done').innerText = done;
+                
+                // Atualiza Barra
+                document.getElementById('rep-bar').style.width = perc + '%';
+                document.getElementById('rep-perc').innerText = perc + '% Concluído';
+
+                // Lista por Unidade
+                const list = document.getElementById('rep-list-units');
+                list.innerHTML = '';
+                
+                // Agrupa O.S. por unidade
+                const counts = {};
+                OSMod.data.forEach(o => { counts[o.site] = (counts[o.site] || 0) + 1; });
+                
+                for(let u in counts) {
+                    list.innerHTML += `<li class="list-item"><span>${u}</span> <b>${counts[u]} O.S.</b></li>`;
+                }
+                if(Object.keys(counts).length === 0) list.innerHTML = '<li class="list-item">Sem dados</li>';
+            }
+        };
+
+        // --- 9. MODULE: MODAL ---
+        const Modal = {
+            curr: null,
+            open: (id) => {
+                const item = EquipMod.data.find(x=>x.id===id);
+                if(!item) return;
+                Modal.curr = id;
+                const d = document.getElementById('modal-body'); d.innerHTML='';
+                item.subs.forEach((s,i)=>d.innerHTML+=`<div style="margin-bottom:5px">#${i+1} <input class="edit-inp" value="${s}" style="width:80%"></div>`);
+                document.getElementById('modal-edit').classList.add('active');
+            },
+            save: () => {
+                const inps = document.querySelectorAll('.edit-inp');
+                const i = EquipMod.data.findIndex(x=>x.id===Modal.curr);
+                if(i!==-1){ EquipMod.data[i].subs = Array.from(inps).map(x=>x.value); DB.set('sys_db_equips', EquipMod.data); EquipMod.render(); }
+                Modal.close();
+            },
+            close: () => document.getElementById('modal-edit').classList.remove('active')
+        };
+
+        // --- BOOTSTRAP ---
+        window.onload = () => {
+            UnitMod.load(); UnitMod.render();
+            CatMod.load();
+            EquipMod.load();
+            OSMod.load();
+        };
+
+    </script>
+</body>
+</html>

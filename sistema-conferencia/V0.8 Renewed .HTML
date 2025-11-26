@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure System v10.5 (O.S. Integrada)</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        /* --- 1. VARIAVEIS & TEMA --- */
+        :root { --primary: #00a79d; --bg: #f4f6f8; --sidebar: #262626; --card: #ffffff; --text: #333; --border: #e0e0e0; --hover: #f5f5f5; }
+        body.dark-mode { --bg: #121212; --sidebar: #000000; --card: #1e1e1e; --text: #e0e0e0; --border: #333; --hover: #2a2a2a; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; transition: background 0.2s, color 0.2s; }
+        body { height: 100vh; display: flex; background: var(--bg); color: var(--text); overflow: hidden; }
+
+        /* --- 2. SIDEBAR --- */
+        .sidebar { width: 260px; background: var(--sidebar); color: #aaa; display: flex; flex-direction: column; flex-shrink: 0; }
+        .sidebar-header { height: 60px; background: var(--primary); color: white; display: flex; align-items: center; padding: 0 20px; font-weight: bold; letter-spacing: 1px; }
+        .menu-scroll { flex: 1; overflow-y: auto; padding-top: 10px; }
+        .menu-btn { padding: 12px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-left: 4px solid transparent; color:#ccc; font-size:14px; transition:0.2s; }
+        .menu-btn:hover { background: rgba(255,255,255,0.05); color: white; }
+        .menu-btn.active { border-left-color: var(--primary); background: rgba(255,255,255,0.1); color: white; font-weight: 600; }
+        .submenu { display: none; background: rgba(0,0,0,0.2); }
+        .submenu.open { display: block; animation: slideDown 0.2s; }
+        .sub-btn { padding: 10px 20px 10px 50px; font-size: 13px; cursor: pointer; color: #888; display: block; transition:0.2s; }
+        .sub-btn:hover { color: white; padding-left: 55px; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .sidebar-footer { padding: 20px; border-top: 1px solid #333; }
+
+        /* --- 3. MAIN --- */
+        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .topbar { height: 60px; background: var(--card); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 30px; }
+        .view { display: none; width:100%; height:100%; overflow-y: auto; animation: fadeIn 0.3s; }
+        .view.active { display: block; }
+        .container-pad { padding: 30px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* UI COMPONENTS */
+        .card { background: var(--card); padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid var(--border); }
+        .grid-3-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; height: 100%; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        
+        h2, h3, h4 { color: var(--text); margin-bottom: 15px; font-weight: 600; }
+        input, select, textarea { width: 100%; padding: 10px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; outline: none; margin-bottom: 10px; }
+        textarea { resize: vertical; min-height: 80px; }
+        input:focus, select:focus, textarea:focus { border-color: var(--primary); }
+        label { display: block; font-size: 11px; font-weight: bold; color: #888; margin-bottom: 5px; text-transform: uppercase; }
+
+        .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color: white; transition:0.2s; display:inline-flex; align-items:center; gap:5px; justify-content:center; }
+        .btn:hover { filter: brightness(0.9); transform: translateY(-1px); }
+        .btn-primary { background: var(--primary); }
+        .btn-danger { background: #ef4444; }
+        .btn-dark { background: #333; }
+        .btn-success { background: #10b981; }
+        .btn-sm { padding: 5px 10px; font-size: 11px; }
+
+        /* TOAST & MODAL */
+        #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 4px; padding: 16px; position: fixed; z-index: 5000; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 14px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+
+        .modal-mask { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; }
+        .modal-box { background: var(--card); width: 400px; padding: 25px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .modal-img-content { max-width: 95%; max-height: 90vh; border: 2px solid white; }
+
+        /* LISTS & CCTV */
+        .list-group { list-style: none; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; background: var(--card); }
+        .list-item { padding: 12px 15px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition:0.2s; }
+        .list-item:hover { background: var(--hover); }
+        
+        .cctv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; padding-bottom: 50px; }
+        .cctv-card { background: #000; border: 2px solid #444; border-radius: 4px; aspect-ratio: 16/9; position: relative; overflow: hidden; transition: border-color 0.3s; }
+        .cctv-card.st-ok { border-color: #10b981; }
+        .cctv-card.st-erro { border-color: #ef4444; animation: pulseBorder 1.5s infinite; }
+        .cctv-card.st-pendente { border-color: #555; }
+        @keyframes pulseBorder { 0% { border-color: #ef4444; } 50% { border-color: #500; } 100% { border-color: #ef4444; } }
+        .cctv-feed { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
+        .cctv-noise { width: 100%; height: 100%; background: repeating-linear-gradient(45deg, #111 0px, #111 2px, #222 2px, #222 4px); display: flex; align-items: center; justify-content: center; color: #555; font-size:12px; }
+        .cctv-hud { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.85); padding: 5px 8px; display: flex; justify-content: space-between; align-items: center; }
+        .cctv-name { color: white; font-family: monospace; font-size: 11px; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 50%; }
+        .cctv-select { background: #333; color: white; border: 1px solid #555; padding: 2px; border-radius: 3px; font-size: 10px; width:auto; margin:0; height: 20px; }
+
+        /* OS CARD STYLE */
+        .os-card { border: 1px solid var(--border); border-left: 4px solid #ccc; padding: 15px; margin-bottom: 10px; background: var(--card); border-radius: 4px; }
+        .os-card.p-baixa { border-left-color: #10b981; }
+        .os-card.p-media { border-left-color: #f59e0b; }
+        .os-card.p-alta { border-left-color: #ef4444; }
+        .os-header { display: flex; justify-content: space-between; font-size: 12px; color: #888; margin-bottom: 5px; text-transform: uppercase; }
+        .os-title { font-weight: bold; font-size: 15px; margin-bottom: 5px; color: var(--text); }
+        .os-desc { font-size: 13px; color: var(--text); margin-bottom: 10px; opacity: 0.8; }
+        .badge { padding: 3px 6px; border-radius: 3px; font-size: 10px; font-weight: bold; color: white; }
+        .b-open { background: #3b82f6; } .b-done { background: #10b981; }
+
+        /* TREE VIEW & PRINT FIXES */
+        .tree-box { border: 1px solid var(--border); border-radius: 4px; background: var(--bg); max-height: 400px; overflow-y: auto; padding: 15px; }
+        @media print { .no-print, .sidebar, .topbar { display: none !important; } body { background: white !important; color: black !important; } .card { border: none !important; box-shadow: none !important; } }
+    </style>
+</head>
+<body>
+
+    <div id="toast">Ação Salva</div>
+
+    <div id="modal-photo" class="modal-mask" onclick="this.style.display='none'">
+        <img id="modal-img-tag" class="modal-img-content" src="">
+    </div>
+
+    <div id="modal-os" class="modal-mask">
+        <div class="modal-box">
+            <h3 style="color:var(--primary)"><i class="fas fa-tools"></i> Abrir O.S.</h3>
+            <p style="font-size:13px; margin-bottom:15px; color:#666">Detectamos um erro. Deseja abrir um chamado técnico para este item?</p>
+            
+            <input type="hidden" id="os-input-equip-id">
+            
+            <label>Descrição do Defeito</label>
+            <textarea id="os-input-desc" placeholder="Ex: Câmera sem sinal, Lente suja, Cabo rompido..."></textarea>
+            
+            <label>Prioridade</label>
+            <select id="os-input-prio">
+                <option value="baixa">Baixa (Pode aguardar)</option>
+                <option value="media">Média (Verificar em breve)</option>
+                <option value="alta">Alta (Crítico / Segurança Comprometida)</option>
+            </select>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px">
+                <button class="btn btn-dark" onclick="OS.closeModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="OS.create()">ABRIR O.S.</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="login-screen" style="position:fixed; inset:0; background:var(--sidebar); z-index:3000; display:flex; justify-content:center; align-items:center;">
+        <div class="login-box" style="background:var(--card); padding:40px; width:350px; border-radius:8px; text-align:center;">
+            <div style="font-size:40px; color:var(--primary); margin-bottom:10px"><i class="fas fa-shield-alt"></i></div>
+            <h2 style="margin-bottom:20px;">Acesso Admin</h2>
+            <input id="login-user" placeholder="admin">
+            <input type="password" id="login-pass" placeholder="123">
+            <button class="btn btn-primary" style="width:100%" onclick="Auth.login()">ENTRAR</button>
+        </div>
+    </div>
+
+    <input type="file" id="hidden-photo-input" accept="image/*" style="display:none" onchange="AdmInst.processPhoto(this)">
+
+    <nav class="sidebar">
+        <div class="sidebar-header"><i class="fas fa-shield-alt"></i> SECURE SYS v10.5</div>
+        <div class="menu-scroll">
+            <div class="menu-btn active" onclick="Nav.go('hero')"><i class="fas fa-home"></i> Início</div>
+            
+            <div class="menu-btn" onclick="Nav.toggleSub('sub-admin')">
+                <i class="fas fa-cogs"></i> Administração <i class="fas fa-chevron-down" style="margin-left:auto; font-size:10px"></i>
+            </div>
+            <div id="sub-admin" class="submenu">
+                <div class="sub-btn" onclick="Nav.go('admin-sites')">1. Sites (Locais)</div>
+                <div class="sub-btn" onclick="Nav.go('admin-types')">2. Catálogo Tipos</div>
+                <div class="sub-btn" onclick="Nav.go('admin-equips')">3. Instalação</div>
+            </div>
+
+            <div class="menu-btn" onclick="Nav.go('checklist-cctv')"><i class="fas fa-video"></i> Checklist CCTV</div>
+            <div class="menu-btn" onclick="Nav.go('checklist-eq')"><i class="fas fa-tasks"></i> Checklist Equip.</div>
+            
+            <div class="menu-btn" onclick="Nav.go('os')"><i class="fas fa-tools"></i> O.S. Manutenção</div>
+            <div class="menu-btn" onclick="Nav.go('reports')"><i class="fas fa-file-alt"></i> Relatórios</div>
+        </div>
+        <div class="sidebar-footer">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; margin-bottom:10px">
+                <button class="btn btn-dark btn-sm" onclick="DB.export()"><i class="fas fa-download"></i> Backup</button>
+                <label class="btn btn-dark btn-sm" style="margin:0; cursor:pointer; text-align:center">
+                    <i class="fas fa-upload"></i> Restaurar
+                    <input type="file" style="display:none" onchange="DB.import(this)" accept=".json">
+                </label>
+            </div>
+            <button class="btn btn-danger" style="width:100%; font-size:11px" onclick="DB.reset()"><i class="fas fa-trash"></i> RESETAR TUDO</button>
+        </div>
+    </nav>
+
+    <main class="main">
+        <div class="topbar">
+            <h3>Bem-vindo</h3>
+            <button class="btn btn-dark" onclick="App.toggleTheme()"><i class="fas fa-adjust"></i> Tema</button>
+        </div>
+
+        <div id="view-hero" class="view active" style="padding:0">
+            <div style="width:100%; height:100%; background: url('https://images.unsplash.com/photo-1581092921461-eab62496096b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80') center/cover; position:relative;">
+                <div style="position:absolute; inset:0; background: linear-gradient(135deg, rgba(0, 167, 157, 0.9), rgba(30, 200, 180, 0.6)); display:flex; flex-direction:column; justify-content:center; padding-left:60px; color:white;">
+                    <h1 style="font-size:48px; font-weight:800; margin-bottom:10px">Sistema Integrado</h1>
+                    <p style="font-size:22px; opacity:0.9">Gestão de Ativos e O.S.</p>
+                    <div style="margin-top:30px; display:flex; gap:20px">
+                        <div class="card" style="background:rgba(0,0,0,0.5); color:white; border:1px solid rgba(255,255,255,0.2); min-width:150px; text-align:center">
+                            <div style="font-size:30px; font-weight:bold" id="dash-check">0</div>
+                            <div style="font-size:12px; opacity:0.8">ITENS HOJE</div>
+                        </div>
+                        <div class="card" style="background:rgba(239, 68, 68, 0.6); color:white; border:1px solid rgba(255,255,255,0.2); min-width:150px; text-align:center">
+                            <div style="font-size:30px; font-weight:bold" id="dash-os">0</div>
+                            <div style="font-size:12px; opacity:0.8">O.S. ABERTAS</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-admin-sites" class="view container-pad">
+            <div class="card">
+                <h2 style="color:var(--primary)">1. Gerenciar Sites</h2>
+                <div style="display:flex; gap:10px; margin-bottom:20px">
+                    <input id="site-name" placeholder="Nome do Local" style="margin:0">
+                    <button class="btn btn-primary" onclick="AdmSites.add()">Adicionar</button>
+                </div>
+                <ul id="site-list" class="list-group"></ul>
+            </div>
+        </div>
+
+        <div id="view-admin-types" class="view container-pad">
+            <div class="card">
+                <h2 style="color:var(--primary)">2. Catálogo de Tipos</h2>
+                <div style="display:flex; gap:10px; margin-bottom:20px">
+                    <div style="flex:2"><input id="type-name" placeholder="Ex: Câmera IP, Catraca" style="margin:0"></div>
+                    <div style="flex:1"><select id="type-cat" style="margin:0"><option value="video">Vídeo</option><option value="other">Outros</option></select></div>
+                    <button class="btn btn-primary" onclick="AdmTypes.add()">Adicionar</button>
+                </div>
+                <ul id="type-list" class="list-group"></ul>
+            </div>
+        </div>
+
+        <div id="view-admin-equips" class="view container-pad">
+            <h2 style="margin-bottom:20px; color:var(--primary)">3. Instalação</h2>
+            <div class="card" style="border-left: 5px solid var(--primary)">
+                <label>PASSO 1: Local</label>
+                <select id="eq-site-select" onchange="AdmInst.onSiteChange()" style="margin:0"></select>
+            </div>
+            <div id="eq-panel" style="display:none; height: calc(100vh - 250px);">
+                <div class="grid-3-col">
+                    <div class="card" style="display:flex; flex-direction:column">
+                        <h4>PASSO 2: Tipo</h4>
+                        <ul id="catalog-list" class="list-group" style="flex:1; overflow-y:auto"></ul>
+                    </div>
+                    <div class="card" style="display:flex; flex-direction:column; border-color:var(--primary)">
+                        <h4 id="group-col-title">PASSO 3: Configurar</h4>
+                        <div id="create-group-form" style="display:none; background:rgba(0,167,157,0.1); padding:15px; border-radius:6px; margin-bottom:15px;">
+                            <label>Nome Grupo</label><input id="group-name-in" placeholder="Ex: Câmeras Hall">
+                            <label>Qtd Inicial</label><div style="display:flex; gap:5px"><input type="number" id="group-qty-in" value="1" min="1"><button class="btn btn-primary" onclick="AdmInst.createGroup()">Criar</button></div>
+                        </div>
+                        <ul id="group-list" class="list-group" style="flex:1; overflow-y:auto"></ul>
+                    </div>
+                    <div class="card" style="display:flex; flex-direction:column">
+                        <h4>PASSO 4: Itens</h4>
+                        <div id="item-list-box" style="display:none; flex:1; flex-direction:column">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:10px"><small>Editar:</small><button class="btn btn-sm btn-primary" onclick="AdmInst.addOneMore()">+1</button></div>
+                            <ul id="item-list" class="list-group" style="flex:1; overflow-y:auto"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-checklist-cctv" class="view container-pad">
+            <div class="card no-print">
+                <div style="display:flex; gap:10px; align-items:flex-end;">
+                    <div style="flex:1"><label>Data</label><input type="date" id="cctv-date" style="margin:0" onchange="ChecklistCCTV.clear()"></div>
+                    <div style="flex:1"><label>Site</label><select id="cctv-site" style="margin:0" onchange="ChecklistCCTV.onSiteChange()"></select></div>
+                    <div style="flex:1"><label>Grupo</label><select id="cctv-group" disabled style="margin:0"></select></div>
+                    <button class="btn btn-primary" style="height:42px" onclick="ChecklistCCTV.load()">Carregar</button>
+                </div>
+            </div>
+            <div id="cctv-container" style="padding-bottom:50px"></div>
+        </div>
+
+        <div id="view-checklist-eq" class="view container-pad">
+            <div class="card no-print">
+                <div style="display:flex; gap:10px; align-items:flex-end;">
+                    <div style="flex:1"><label>Data</label><input type="date" id="eq-date" style="margin:0" onchange="ChecklistEq.clear()"></div>
+                    <div style="flex:1"><label>Site</label><select id="eq-site" style="margin:0" onchange="ChecklistEq.onSiteChange()"></select></div>
+                    <div style="flex:1"><label>Grupo</label><select id="eq-group" disabled style="margin:0"></select></div>
+                    <button class="btn btn-primary" style="height:42px" onclick="ChecklistEq.load()">Carregar</button>
+                </div>
+            </div>
+            <div id="eq-container" style="padding-bottom:50px"></div>
+        </div>
+
+        <div id="view-os" class="view container-pad">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px">
+                <h2 style="margin:0; color:var(--primary)">Gestão de Ordens de Serviço</h2>
+                <div style="display:flex; gap:10px">
+                    <select id="os-filter-site" style="width:200px; margin:0" onchange="OS.render()">
+                        <option value="">Todos os Locais</option>
+                    </select>
+                    <button class="btn btn-dark" onclick="OS.render()"><i class="fas fa-sync"></i></button>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card" style="background:#fff3cd; border:1px solid #ffeeba">
+                    <h4 style="color:#856404"><i class="fas fa-exclamation-circle"></i> Pendentes / Em Aberto</h4>
+                    <div id="os-list-open" style="min-height:200px"></div>
+                </div>
+
+                <div class="card" style="background:#d1e7dd; border:1px solid #badbcc">
+                    <h4 style="color:#0f5132"><i class="fas fa-check-circle"></i> Histórico / Concluídas</h4>
+                    <div id="os-list-done" style="max-height:600px; overflow-y:auto"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-reports" class="view container-pad">
+            <div class="print-header">
+                <h2 style="text-align:center; border:none; margin-bottom:5px">RELATÓRIO TÉCNICO</h2>
+                <div style="text-align:center; font-size:12px; color:#555" id="print-date-info"></div>
+            </div>
+            <div class="card no-print">
+                <h2 style="color:var(--primary)">Configuração Relatório</h2>
+                <div class="grid-2" style="margin-bottom:15px">
+                    <div><label>Data</label><input type="date" id="rep-date"></div>
+                    <div><label>Site</label><select id="rep-site" onchange="Reports.onSiteChange()"></select></div>
+                </div>
+                <div id="rep-tree-view" class="tree-box">
+                    <div style="padding:20px; text-align:center; color:#888">Selecione um local.</div>
+                </div>
+                <button class="btn btn-primary" style="width:100%; margin-top:15px" onclick="Reports.generate()">Gerar Relatório</button>
+            </div>
+            <div id="rep-results" style="display:none">
+                <div class="grid-3-col" style="height:auto; margin-bottom:20px">
+                    <div class="card" style="text-align:center"><div style="font-size:28px; font-weight:800; color:var(--primary)" id="kpi-total">0</div><small>VERIFICADOS</small></div>
+                    <div class="card" style="text-align:center"><div style="font-size:28px; font-weight:800; color:#ef4444" id="kpi-fail">0</div><small>FALHAS</small></div>
+                    <div class="card" style="text-align:center"><div style="font-size:28px; font-weight:800; color:#10b981" id="kpi-ok">0%</div><small>OPERACIONAL</small></div>
+                </div>
+                <div class="card">
+                    <h4>Detalhamento</h4>
+                    <table style="width:100%; border-collapse:collapse; font-size:13px">
+                        <thead><tr style="border-bottom:2px solid #ddd; text-align:left"><th>Item</th><th>Status</th><th>Obs</th></tr></thead>
+                        <tbody id="rep-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        const Toast={show:(m)=>{const x=document.getElementById("toast");x.innerText=m;x.className="show";setTimeout(()=>{x.className=x.className.replace("show","")},3000)}};
+
+        const DB = {
+            data: { sites: [], types: [], groups: [], equips: [], checks: [], os: [] },
+            init: () => { const s=localStorage.getItem('sys_v105'); if(s) DB.data=JSON.parse(s); else DB.seed(); },
+            save: () => { localStorage.setItem('sys_v105', JSON.stringify(DB.data)); App.updateDash(); },
+            seed: () => { DB.data.sites=[{id:1,name:'Matriz SP'}]; DB.data.types=[{id:10,name:'Câmera IP',isVideo:true}]; DB.save(); },
+            reset: () => { if(confirm('RESETAR TUDO?')){ localStorage.removeItem('sys_v105'); location.reload(); } },
+            export: () => { const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(DB.data)],{type:'application/json'})); a.download='backup.json'; a.click(); },
+            import: (inp) => { const fr=new FileReader(); fr.onload=(e)=>{ if(confirm("Restaurar?")){ DB.data=JSON.parse(e.target.result); DB.save(); location.reload(); }}; fr.readAsText(inp.files[0]); }
+        };
+
+        const Auth={login:()=>{if(document.getElementById('login-user').value==='admin'){document.getElementById('login-screen').style.display='none';App.init();Nav.go('hero')}}};
+
+        // --- O.S. SYSTEM ---
+        const OS = {
+            init: () => {
+                const sel = document.getElementById('os-filter-site');
+                sel.innerHTML = '<option value="">Todos os Locais</option>' + DB.data.sites.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+                OS.render();
+            },
+            render: () => {
+                const siteFilter = document.getElementById('os-filter-site').value;
+                const openContainer = document.getElementById('os-list-open');
+                const doneContainer = document.getElementById('os-list-done');
+                
+                let list = DB.data.os.sort((a,b)=>b.id-a.id); // Newest first
+                if(siteFilter) list = list.filter(o => o.siteId == siteFilter);
+
+                openContainer.innerHTML = '';
+                doneContainer.innerHTML = '';
+
+                if(list.length === 0) {
+                    openContainer.innerHTML = '<p style="padding:20px; color:#888; text-align:center">Nenhuma O.S.</p>';
+                }
+
+                list.forEach(os => {
+                    const equip = DB.data.equips.find(e => e.id === os.equipId);
+                    const group = equip ? DB.data.groups.find(g => g.id === equip.groupId) : {name:'?'};
+                    const site = equip ? DB.data.sites.find(s => s.id === equip.siteId) : {name:'?'};
+                    const itemName = equip ? equip.name : 'Item excluído';
+                    
+                    const html = `
+                    <div class="os-card p-${os.priority}">
+                        <div class="os-header">
+                            <span>#${os.id} • ${os.dateOpen}</span>
+                            <span>${site.name}</span>
+                        </div>
+                        <div class="os-title">${group.name} - ${itemName}</div>
+                        <div class="os-desc">${os.desc}</div>
+                        <div style="display:flex; justify-content:space-between; align-items:center">
+                            <span class="badge ${os.status==='aberto'?'b-open':'b-done'}">${os.status.toUpperCase()}</span>
+                            ${os.status==='aberto' ? `<button class="btn btn-sm btn-success" onclick="OS.finish(${os.id})"><i class="fas fa-check"></i> Concluir</button>` : `<small style="color:#666">Concluído em ${os.dateClose}</small>`}
+                        </div>
+                    </div>`;
+
+                    if(os.status === 'aberto') openContainer.innerHTML += html;
+                    else doneContainer.innerHTML += html;
+                });
+            },
+            prompt: (equipId) => {
+                document.getElementById('os-input-equip-id').value = equipId;
+                document.getElementById('os-input-desc').value = '';
+                document.getElementById('modal-os').style.display = 'flex';
+            },
+            closeModal: () => {
+                document.getElementById('modal-os').style.display = 'none';
+            },
+            create: () => {
+                const equipId = parseInt(document.getElementById('os-input-equip-id').value);
+                const desc = document.getElementById('os-input-desc').value;
+                const prio = document.getElementById('os-input-prio').value;
+                
+                if(!desc) return alert("Digite a descrição.");
+                
+                const equip = DB.data.equips.find(e=>e.id===equipId);
+                
+                DB.data.os.push({
+                    id: Date.now(),
+                    equipId: equipId,
+                    siteId: equip ? equip.siteId : 0,
+                    status: 'aberto',
+                    priority: prio,
+                    desc: desc,
+                    dateOpen: new Date().toLocaleDateString('pt-BR'),
+                    dateClose: null
+                });
+                
+                DB.save();
+                OS.closeModal();
+                Toast.show("O.S. Criada com Sucesso!");
+            },
+            finish: (id) => {
+                if(confirm("Confirmar conclusão da manutenção?")) {
+                    const os = DB.data.os.find(o => o.id === id);
+                    if(os) {
+                        os.status = 'concluido';
+                        os.dateClose = new Date().toLocaleDateString('pt-BR');
+                        DB.save();
+                        OS.render();
+                    }
+                }
+            }
+        };
+
+        // --- CHECKLIST LOGIC (UPDATED WITH TRIGGER) ---
+        const Logic = {
+            saveCheck: (id, st, type) => {
+                const dateId = type === 'cctv' ? 'cctv-date' : 'eq-date';
+                const loadFn = type === 'cctv' ? ChecklistCCTV.load : ChecklistEq.load;
+                const date = document.getElementById(dateId).value;
+                
+                // Remove old check for same day/item
+                DB.data.checks = DB.data.checks.filter(c => !(c.date === date && c.equipId === id));
+                // Add new
+                DB.data.checks.push({ date, equipId: id, status: st });
+                DB.save();
+                loadFn();
+                Toast.show('Salvo');
+
+                // TRIGGER O.S. IF ERROR
+                if(st === 'Erro') {
+                    // Check if there is already an open OS for this item to avoid duplicates (Optional, but good UX)
+                    const existingOS = DB.data.os.find(o => o.equipId === id && o.status === 'aberto');
+                    if(!existingOS) {
+                        OS.prompt(id);
+                    } else {
+                        Toast.show("Já existe O.S. aberta para este item.");
+                    }
+                }
+            }
+        };
+
+        const ChecklistCCTV = {
+            init: () => { document.getElementById('cctv-date').valueAsDate=new Date(); document.getElementById('cctv-site').innerHTML='<option value="">...</option>'+DB.data.sites.map(s=>`<option value="${s.id}">${s.name}</option>`).join('') },
+            clear: () => document.getElementById('cctv-container').innerHTML='',
+            onSiteChange: () => {
+                const sid=parseInt(document.getElementById('cctv-site').value);
+                const groups=DB.data.groups.filter(g=>g.siteId===sid);
+                const grpSel=document.getElementById('cctv-group');
+                // Filter only video groups
+                const vidTypes = DB.data.types.filter(t=>t.isVideo).map(t=>t.id);
+                const vidGroups = groups.filter(g=>vidTypes.includes(g.typeId));
+                grpSel.innerHTML='<option value="">Selecione...</option>'+vidGroups.map(g=>`<option value="${g.id}">${g.name}</option>`).join('');
+                grpSel.disabled=false;
+                ChecklistCCTV.clear();
+            },
+            load: () => {
+                const gid=parseInt(document.getElementById('cctv-group').value);
+                const date=document.getElementById('cctv-date').value;
+                if(!gid) return alert("Selecione grupo");
+                const items=DB.data.equips.filter(e=>e.groupId===gid);
+                const container=document.getElementById('cctv-container');
+                container.className="cctv-grid";
+                if(items.length===0) return container.innerHTML='Vazio';
+                
+                container.innerHTML=items.map(i=>{
+                    const check=DB.data.checks.find(c=>c.date===date && c.equipId===i.id);
+                    const st=check?check.status:'Pendente';
+                    const img = i.image ? `<img src="${i.image}" class="cctv-feed" onclick="document.getElementById('modal-img-tag').src='${i.image}';document.getElementById('modal-photo').style.display='flex'">` : `<div class="cctv-noise">NO SIGNAL</div>`;
+                    return `
+                    <div class="cctv-card st-${st.toLowerCase()}">
+                        ${st==='OK'?'<div style="position:absolute;top:10px;right:10px;color:#10b981;font-weight:bold;text-shadow:0 0 5px #000">● REC</div>':''}
+                        ${img}
+                        <div class="cctv-hud">
+                            <div class="cctv-name">${i.name}</div>
+                            <select class="cctv-select" onchange="Logic.saveCheck(${i.id}, this.value, 'cctv')">
+                                <option ${st=='Pendente'?'selected':''}>Pendente</option>
+                                <option ${st=='OK'?'selected':''}>OK</option>
+                                <option ${st=='Erro'?'selected':''}>Erro</option>
+                            </select>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+        };
+
+        const ChecklistEq = {
+            init: () => { document.getElementById('eq-date').valueAsDate=new Date(); document.getElementById('eq-site').innerHTML='<option value="">...</option>'+DB.data.sites.map(s=>`<option value="${s.id}">${s.name}</option>`).join('') },
+            clear: () => document.getElementById('eq-container').innerHTML='',
+            onSiteChange: () => {
+                const sid=parseInt(document.getElementById('eq-site').value);
+                const groups=DB.data.groups.filter(g=>g.siteId===sid);
+                const grpSel=document.getElementById('eq-group');
+                // Filter NON video groups
+                const vidTypes = DB.data.types.filter(t=>t.isVideo).map(t=>t.id);
+                const nonVidGroups = groups.filter(g=>!vidTypes.includes(g.typeId));
+                grpSel.innerHTML='<option value="">Selecione...</option>'+nonVidGroups.map(g=>`<option value="${g.id}">${g.name}</option>`).join('');
+                grpSel.disabled=false;
+                ChecklistEq.clear();
+            },
+            load: () => {
+                const gid=parseInt(document.getElementById('eq-group').value);
+                const date=document.getElementById('eq-date').value;
+                if(!gid) return alert("Selecione grupo");
+                const items=DB.data.equips.filter(e=>e.groupId===gid);
+                const container=document.getElementById('eq-container');
+                container.className="list-group";
+                if(items.length===0) return container.innerHTML='Vazio';
+                
+                container.innerHTML=items.map(i=>{
+                    const check=DB.data.checks.find(c=>c.date===date && c.equipId===i.id);
+                    const st=check?check.status:'Pendente';
+                    let bg = '';
+                    if(st==='OK') bg='background:rgba(16,185,129,0.1); border-left:4px solid #10b981';
+                    if(st==='Erro') bg='background:rgba(239,68,68,0.1); border-left:4px solid #ef4444';
+                    
+                    return `
+                    <div class="list-item" style="${bg}">
+                        <b>${i.name}</b>
+                        <select class="cctv-select" style="width:100px; height:30px" onchange="Logic.saveCheck(${i.id}, this.value, 'eq')">
+                            <option ${st=='Pendente'?'selected':''}>Pendente</option>
+                            <option ${st=='OK'?'selected':''}>OK</option>
+                            <option ${st=='Erro'?'selected':''}>Erro</option>
+                        </select>
+                    </div>`;
+                }).join('');
+            }
+        };
+
+        const AdmSites={render:()=>{document.getElementById('site-list').innerHTML=DB.data.sites.map(s=>`<li class="list-item"><b>${s.name}</b><button class="btn btn-sm btn-danger" onclick="AdmSites.del(${s.id})"><i class="fas fa-trash"></i></button></li>`).join('')},add:()=>{const n=document.getElementById('site-name').value;if(n){DB.data.sites.push({id:Date.now(),name:n});DB.save();document.getElementById('site-name').value='';AdmSites.render();Toast.show('Site add')}},del:(id)=>{if(confirm('Del?')){DB.data.sites=DB.data.sites.filter(x=>x.id!==id);DB.save();AdmSites.render()}}};
+        const AdmTypes={render:()=>{document.getElementById('type-list').innerHTML=DB.data.types.map(t=>`<li class="list-item"><span>${t.isVideo?'📷':''} ${t.name}</span><button class="btn btn-sm btn-danger" onclick="AdmTypes.del(${t.id})"><i class="fas fa-trash"></i></button></li>`).join('')},add:()=>{const n=document.getElementById('type-name').value;const c=document.getElementById('type-cat').value;if(n){DB.data.types.push({id:Date.now(),name:n,isVideo:c==='video'});DB.save();document.getElementById('type-name').value='';AdmTypes.render();Toast.show('Tipo add')}},del:(id)=>{if(confirm('Del?')){DB.data.types=DB.data.types.filter(x=>x.id!==id);DB.save();AdmTypes.render()}}};
+        const AdmInst={currSite:null,currTypeId:null,currGroup:null,uploadItemId:null,init:()=>{document.getElementById('eq-site-select').innerHTML='<option value="">Selecione...</option>'+DB.data.sites.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');document.getElementById('eq-panel').style.display='none'},onSiteChange:()=>{const v=document.getElementById('eq-site-select').value;if(!v){document.getElementById('eq-panel').style.display='none';return}AdmInst.currSite=parseInt(v);document.getElementById('eq-panel').style.display='block';document.getElementById('catalog-list').innerHTML=DB.data.types.map(t=>`<li class="list-item" onclick="AdmInst.selectType(${t.id})"><span>${t.name}</span> <i class="fas fa-chevron-right"></i></li>`).join('');AdmInst.renderGroups();document.getElementById('create-group-form').style.display='none';document.getElementById('item-list-box').style.display='none'},selectType:(tid)=>{AdmInst.currTypeId=tid;AdmInst.currGroup=null;const t=DB.data.types.find(x=>x.id===tid);document.getElementById('group-col-title').innerText=`PASSO 3: ${t.name}`;document.getElementById('create-group-form').style.display='block';document.getElementById('group-name-in').value=t.name;AdmInst.renderGroups();document.getElementById('item-list-box').style.display='none'},createGroup:()=>{const name=document.getElementById('group-name-in').value;const qty=parseInt(document.getElementById('group-qty-in').value);if(name&&qty>0){const gid=Date.now();DB.data.groups.push({id:gid,siteId:AdmInst.currSite,typeId:AdmInst.currTypeId,name:name});for(let i=0;i<qty;i++){let num=i+1;DB.data.equips.push({id:Date.now()+i,groupId:gid,siteId:AdmInst.currSite,name:`${name} ${num<10?'0'+num:num}`,image:null})}DB.save();AdmInst.renderGroups();AdmInst.selectGroup(gid);Toast.show('Grupo criado')}},renderGroups:()=>{const groups=DB.data.groups.filter(g=>g.siteId===AdmInst.currSite&&g.typeId===AdmInst.currTypeId);document.getElementById('group-list').innerHTML=groups.map(g=>{const count=DB.data.equips.filter(e=>e.groupId===g.id).length;return `<li class="list-item ${AdmInst.currGroup===g.id?'active':''}" onclick="AdmInst.selectGroup(${g.id})"><span>${g.name}</span> <span class="btn-sm btn-dark">${count}</span></li>`}).join('')},selectGroup:(gid)=>{AdmInst.currGroup=gid;AdmInst.renderGroups();document.getElementById('item-list-box').style.display='flex';AdmInst.renderItems()},addOneMore:()=>{if(!AdmInst.currGroup)return;const grp=DB.data.groups.find(g=>g.id===AdmInst.currGroup);const count=DB.data.equips.filter(e=>e.groupId===AdmInst.currGroup).length+1;DB.data.equips.push({id:Date.now(),groupId:AdmInst.currGroup,siteId:AdmInst.currSite,name:`${grp.name} ${count<10?'0'+count:count}`,image:null});DB.save();AdmInst.renderItems();AdmInst.renderGroups();Toast.show('Item adicionado')},renderItems:()=>{const items=DB.data.equips.filter(e=>e.groupId===AdmInst.currGroup);document.getElementById('item-list').innerHTML=items.map(e=>{const hasImg=e.image?'color:var(--primary)':'color:#ccc';return `<li class="list-item"><input style="border:none;background:transparent;width:100%" value="${e.name}" onchange="AdmInst.rename(${e.id},this.value)"><div style="display:flex; gap:5px"><button class="btn btn-sm" style="background:transparent; ${hasImg}; font-size:16px" onclick="AdmInst.triggerUpload(${e.id})"><i class="fas fa-camera"></i></button><button class="btn btn-sm btn-danger" onclick="AdmInst.delItem(${e.id})"><i class="fas fa-trash"></i></button></div></li>`}).join('')},rename:(id,v)=>{const e=DB.data.equips.find(x=>x.id===id);if(e){e.name=v;DB.save()}},delItem:(id)=>{if(confirm('Del?')){DB.data.equips=DB.data.equips.filter(x=>x.id!==id);DB.save();AdmInst.renderItems();AdmInst.renderGroups()}},triggerUpload:(id)=>{AdmInst.uploadItemId=id;document.getElementById('hidden-photo-input').click()},processPhoto:(input)=>{if(input.files&&input.files[0]){const reader=new FileReader();reader.onload=function(e){const img=new Image();img.src=e.target.result;img.onload=function(){const canvas=document.createElement('canvas');const ctx=canvas.getContext('2d');const MAX_WIDTH=800;const scale=MAX_WIDTH/img.width;canvas.width=MAX_WIDTH;canvas.height=img.height*scale;ctx.drawImage(img,0,0,canvas.width,canvas.height);const compressedData=canvas.toDataURL('image/jpeg',0.7);const item=DB.data.equips.find(x=>x.id===AdmInst.uploadItemId);if(item){item.image=compressedData;DB.save();AdmInst.renderItems();Toast.show('Foto salva')}}};reader.readAsDataURL(input.files[0])}}};
+
+        const Reports = {
+            init: () => { document.getElementById('rep-date').valueAsDate = new Date(); document.getElementById('rep-site').innerHTML = '<option value="">...</option>' + DB.data.sites.map(s=>`<option value="${s.id}">${s.name}</option>`).join(''); },
+            onSiteChange: () => {
+                const sid = parseInt(document.getElementById('rep-site').value);
+                const tree = document.getElementById('rep-tree-view');
+                if(!sid) { tree.innerHTML = 'Selecione local'; return; }
+                const groups = DB.data.groups.filter(g=>g.siteId===sid);
+                tree.innerHTML = groups.map(g => `<div><input type="checkbox" class="rep-grp-chk" value="${g.id}" checked> ${g.name}</div>`).join('');
+            },
+            generate: () => {
+                const date = document.getElementById('rep-date').value;
+                const selGrps = Array.from(document.querySelectorAll('.rep-grp-chk:checked')).map(c=>parseInt(c.value));
+                if(selGrps.length===0) return alert("Selecione itens");
+                const items = DB.data.equips.filter(e=>selGrps.includes(e.groupId));
+                const checks = DB.data.checks.filter(c=>c.date===date && items.find(i=>i.id===c.equipId));
+                
+                document.getElementById('kpi-total').innerText = checks.length;
+                document.getElementById('kpi-fail').innerText = checks.filter(c=>c.status==='Erro').length;
+                const ok = checks.filter(c=>c.status==='OK').length;
+                document.getElementById('kpi-ok').innerText = checks.length ? Math.round((ok/checks.length)*100)+'%' : '0%';
+
+                document.getElementById('rep-table-body').innerHTML = checks.map(c=>{
+                    const eq = DB.data.equips.find(e=>e.id===c.equipId);
+                    const grp = DB.data.groups.find(g=>g.id===eq.groupId);
+                    return `<tr><td style="padding:10px; border-bottom:1px solid #ddd"><b>${grp.name}</b><br>${eq.name}</td><td style="padding:10px; border-bottom:1px solid #ddd">${c.status}</td><td style="padding:10px; border-bottom:1px solid #ddd">${c.status==='Erro'?'Falha detectada':'-'}</td></tr>`;
+                }).join('');
+                document.getElementById('rep-results').style.display='block';
+            }
+        };
+
+        const App = {
+            init: () => { DB.init(); App.updateDash(); },
+            toggleTheme: () => document.body.classList.toggle('dark-mode'),
+            updateDash: () => {
+                const today = new Date().toISOString().split('T')[0];
+                const checks = DB.data.checks.filter(c => c.date === today);
+                const osOpen = DB.data.os.filter(o => o.status === 'aberto').length;
+                if(document.getElementById('dash-check')) {
+                    document.getElementById('dash-check').innerText = checks.length;
+                    document.getElementById('dash-os').innerText = osOpen;
+                }
+            }
+        };
+
+        const Nav = {
+            toggleSub: (id) => document.getElementById(id).classList.toggle('open'),
+            go: (v) => {
+                document.querySelectorAll('.view').forEach(e => e.classList.remove('active'));
+                document.getElementById('view-' + v).classList.add('active');
+                if(v === 'hero') App.updateDash();
+                if(v.includes('admin-')) {
+                    document.getElementById('sub-admin').classList.add('open');
+                    if(v==='admin-sites') AdmSites.render();
+                    if(v==='admin-types') AdmTypes.render();
+                    if(v==='admin-equips') AdmInst.init();
+                }
+                if(v.includes('checklist')) (v==='checklist-cctv'?ChecklistCCTV:ChecklistEq).init();
+                if(v==='reports') Reports.init();
+                if(v==='os') OS.init();
+            }
+        };
+    </script>
+</body>
+</html>

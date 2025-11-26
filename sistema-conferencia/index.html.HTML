@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sistema de Conferência - 3M</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <style>
+    /* --- CONFIGURAÇÕES GERAIS E VARIÁVEIS --- */
+    :root {
+      --primary: #4f46e5; --primary-600: #4338ca; --primary-700: #3730a3;
+      --ok: #10b981; --ok-600: #059669;
+      --erro: #ef4444; --erro-600: #dc2626;
+      --warning: #f59e0b; --warning-600: #d97706;
+      --text: #0f172a; --muted: #475569; --muted-2: #6b7280;
+      --bg: #f7f9fc; --panel: #ffffff; --panel-alt: #f6f8fb; --border: #e6ebf2;
+      --radius: 14px; --radius-sm: 12px; --radius-xs: 10px;
+      --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.06);
+      --shadow-sm: 0 6px 18px rgba(15,23,42,.06);
+      --shadow-md: 0 14px 30px rgba(15,23,42,.12);
+      --ring: 0 0 0 4px rgba(79, 70, 229, 0.12);
+      --trans: 200ms ease;
+    }
+
+    [data-theme="dark"] {
+      --primary: #8b5cf6; --primary-600: #7c3aed; --primary-700: #6d28d9;
+      --ok: #34d399; --ok-600: #10b981;
+      --erro: #fb7185; --erro-600: #f43f5e;
+      --warning: #fbbf24; --warning-600: #f59e0b;
+      --text: #e5e7eb; --muted: #94a3b8; --muted-2: #a1a1aa;
+      --bg: #0b1220; --panel: #0f172a; --panel-alt: #101826; --border: #1f2937;
+      --shadow-xs: 0 1px 2px rgba(2, 6, 23, .6);
+      --shadow-sm: 0 6px 18px rgba(2, 6, 23, .55);
+      --shadow-md: 0 14px 30px rgba(2, 6, 23, .55);
+      --ring: 0 0 0 4px rgba(139, 92, 246, 0.25);
+    }
+
+    /* --- LAYOUT BASE --- */
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      font-family: Inter, system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      background: radial-gradient(60% 100% at 110% -10%, color-mix(in srgb, var(--primary), transparent 85%), transparent 60%),
+                  radial-gradient(45% 90% at -10% 0%, color-mix(in srgb, var(--ok), transparent 90%), transparent 60%),
+                  var(--bg);
+      color: var(--text); margin: 0; padding: clamp(12px, 1.6vw, 24px); line-height: 1.5;
+    }
+    
+    a, button, input, select, textarea { font: inherit; color: inherit; }
+    :focus-visible { outline: none; box-shadow: var(--ring); border-radius: 10px; transition: box-shadow var(--trans); }
+
+    /* --- PÁGINAS E CONTAINERS --- */
+    #auth-page { display: grid; place-items: center; min-height: 85vh; padding: 40px 0; }
+    #app-page { display: none; }
+
+    .auth-container {
+      background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+      box-shadow: var(--shadow-md); padding: 32px; width: 90%; max-width: 420px; text-align: center;
+    }
+    .auth-container h1 { margin: 0 0 24px 0; font-size: 24px; font-weight: 800; }
+    .auth-form-group { display: flex; flex-direction: column; text-align: left; margin-bottom: 16px; }
+    .auth-form-group label { font-weight: 700; margin-bottom: 6px; font-size: 13px; }
+    .auth-container input { background: var(--panel-alt); border: 1px solid var(--border); border-radius: 12px; padding: 10px; }
+    .auth-btn {
+      width: 100%; padding: 12px; margin-top: 12px; border-radius: 12px; font-weight: 800; cursor: pointer; border: none;
+      background: linear-gradient(180deg, var(--primary), var(--primary-600)); color: #fff;
+      transition: filter var(--trans), transform 80ms ease;
+    }
+    .auth-btn:hover { filter: brightness(1.1); }
+    .auth-btn:active { transform: translateY(1px); }
+    
+    .container { max-width: 1224px; margin: 0 auto; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-md); overflow: hidden; }
+    
+    /* --- HEADER --- */
+    .app-header { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 14px; padding: 16px 24px; border-bottom: 1px solid var(--border); background: var(--panel); }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .brand { width: 42px; height: 42px; border-radius: 8px; background: #ff0000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .brand img { width: 100%; height: 100%; object-fit: contain; }
+    .brand-fallback { font-weight: 900; color: #fff; font-size: 14px; }
+    .app-header h1 { margin: 0; font-size: 20px; font-weight: 800; }
+
+    .user-info { font-size: 14px; color: var(--muted); display: flex; align-items: center; gap: 10px; }
+    .user-info strong { color: var(--text); }
+    .action-btn-sm { background: var(--panel-alt); border: 1px solid var(--border); cursor: pointer; padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; }
+    .action-btn-sm:hover { background: var(--border); }
+
+    /* --- TABS --- */
+    .tabs-container { display: flex; gap: 8px; padding: 10px; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; background: var(--panel); }
+    .tab-btn { padding: 8px 16px; font-size: 14px; font-weight: 700; border: none; background: transparent; color: var(--muted); border-radius: 20px; cursor: pointer; transition: all var(--trans); }
+    .tab-btn:hover { color: var(--text); background: var(--panel-alt); }
+    .tab-btn.active { color: #fff; background: var(--primary); }
+    .tab-content { display: none; padding: 24px; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* --- LAYOUT CONFERÊNCIA --- */
+    .conferencia-layout-container { display: grid; grid-template-columns: 300px 1fr; gap: 24px; }
+    @media (max-width: 900px) { .conferencia-layout-container { grid-template-columns: 1fr; } }
+
+    .conferencia-coluna-esquerda { background: var(--panel-alt); padding: 20px; border-radius: var(--radius); border: 1px solid var(--border); }
+    .seletor-grupo { margin-bottom: 16px; }
+    .seletor-grupo label { font-weight: 700; margin-bottom: 6px; display: block; font-size: 13px; }
+    .seletor-grupo input, .seletor-grupo select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); color: var(--text); }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border-radius: 10px; font-weight: 700; cursor: pointer; border: 1px solid var(--border); background: var(--panel); transition: all var(--trans); font-size: 14px; }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .btn-primary:hover { filter: brightness(1.1); color: #fff; }
+    .btn-danger { background: var(--erro); color: #fff; border-color: var(--erro); }
+    .btn-danger:hover { filter: brightness(1.1); color: #fff; }
+
+    /* --- TABELA E STATUS --- */
+    .container-tabela { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th { background: var(--panel-alt); padding: 12px 16px; text-align: left; font-weight: 800; color: var(--muted); border-bottom: 1px solid var(--border); position: sticky; top: 0; }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+    tbody tr:hover { background: var(--panel-alt); }
+    td { padding: 12px 16px; vertical-align: middle; }
+
+    .seletor-status { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--border); font-weight: 600; background: var(--panel); color: var(--text); cursor: pointer; }
+    tr.status-ok { background: color-mix(in srgb, var(--ok), transparent 92%); }
+    tr.status-ok .seletor-status { border-color: var(--ok); color: #064e3b; }
+    tr.status-erro { background: color-mix(in srgb, var(--erro), transparent 92%); }
+    tr.status-erro .seletor-status { border-color: var(--erro); color: #7f1d1d; }
+
+    .note-indicator { margin-left: 6px; cursor: help; font-size: 14px; }
+
+    /* --- DASHBOARD BI --- */
+    .bi-card-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .bi-card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 20px; display: flex; align-items: center; gap: 16px; box-shadow: var(--shadow-xs); }
+    .bi-icon { width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; font-size: 24px; color: #fff; }
+    .bi-card.ok .bi-icon { background: var(--ok); }
+    .bi-card.erro .bi-icon { background: var(--erro); }
+    .bi-card.total .bi-icon { background: var(--warning); }
+    .bi-content .numero { font-size: 28px; font-weight: 900; line-height: 1; }
+    .bi-content .label { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+    .bi-progress-bar { height: 12px; background: var(--border); border-radius: 6px; overflow: hidden; margin: 10px 0; }
+    .bi-progress-fill { height: 100%; background: var(--ok); transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+
+    /* --- MODAL --- */
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; place-items: center; z-index: 999; backdrop-filter: blur(4px); }
+    .modal-backdrop.active { display: grid; }
+    .modal { background: var(--panel); width: 90%; max-width: 500px; padding: 24px; border-radius: 16px; box-shadow: var(--shadow-md); border: 1px solid var(--border); }
+    .modal h3 { margin-top: 0; }
+    .modal input { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; background: var(--panel-alt); color: var(--text); }
+    .modal .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+    .message { padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 14px; display: none; }
+    .message.error { background: color-mix(in srgb, var(--erro), transparent 90%); color: var(--erro-600); display: block; }
+    .message.success { background: color-mix(in srgb, var(--ok), transparent 90%); color: var(--ok-600); display: block; }
+
+    /* --- UTILITÁRIOS --- */
+    .hidden { display: none !important; }
+    .actions-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; align-items: center; }
+    
+    @media (max-width: 600px) {
+      #tabelaCameras thead { display: none; }
+      #tabelaCameras tbody tr { display: flex; flex-direction: column; padding: 16px; gap: 10px; }
+      #tabelaCameras td { padding: 0; border: none; display: flex; justify-content: space-between; align-items: center; }
+      #tabelaCameras td::before { content: attr(data-label); font-weight: 700; color: var(--muted); font-size: 12px; margin-right: 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="auth-page">
+  <div class="auth-container" id="login-container">
+    <h1>Login</h1>
+    <form id="login-form">
+      <div class="auth-form-group">
+        <label for="login-username">Usuário</label>
+        <input type="text" id="login-username" autocomplete="username" required placeholder="Ex: ygramos.cw@mmm.com">
+      </div>
+      <div class="auth-form-group">
+        <label for="login-password">Senha</label>
+        <input type="password" id="login-password" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="auth-btn">Entrar</button>
+    </form>
+    <div style="margin-top: 16px; font-size: 14px;">
+      Não tem conta? <button id="show-register-btn" style="background:none; border:none; color:var(--primary); cursor:pointer; font-weight:bold;">Registre-se</button>
+    </div>
+    <div id="login-message" class="message"></div>
+  </div>
+
+  <div class="auth-container" id="register-container" style="display: none;">
+    <h1>Registro</h1>
+    <form id="register-form">
+      <div class="auth-form-group">
+        <label for="register-username">Usuário</label>
+        <input type="text" id="register-username" autocomplete="username" required>
+      </div>
+      <div class="auth-form-group">
+        <label for="register-password">Senha</label>
+        <input type="password" id="register-password" autocomplete="new-password" required>
+      </div>
+      <button type="submit" class="auth-btn">Registrar</button>
+    </form>
+    <div style="margin-top: 16px; font-size: 14px;">
+      Já tem conta? <button id="show-login-btn" style="background:none; border:none; color:var(--primary); cursor:pointer; font-weight:bold;">Faça Login</button>
+    </div>
+    <div id="register-message" class="message"></div>
+  </div>
+</div>
+
+<div id="app-page">
+  <div class="container">
+    
+    <header class="app-header">
+      <div class="header-left">
+        <div class="brand">
+          <img id="headerLogo" src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/3M_wordmark.svg/2560px-3M_wordmark.svg.png" alt="3M Logo">
+        </div>
+        <h1>Conferência</h1>
+      </div>
+      
+      <div style="display:flex; gap:10px;">
+        <button id="themeToggleBtn" class="action-btn-sm" title="Alternar Tema">☀️</button>
+      </div>
+
+      <div class="user-info">
+        <span>Olá, <strong id="user-display-name">Usuário</strong></span>
+        <button id="editProfileBtn" class="action-btn-sm">Perfil</button>
+        <button id="logout-btn" class="action-btn-sm" style="color:var(--erro);">Sair</button>
+      </div>
+    </header>
+
+    <div class="tabs-container" role="tablist">
+      <button class="tab-btn active" data-target="tabChecklist">1. Checklist</button>
+      <button class="tab-btn" data-target="tabBI">2. Dashboard</button>
+      <button class="tab-btn" data-target="tabRelatorio">3. Relatório</button>
+      <button class="tab-btn" data-target="tabAdmin" id="tabBtnAdmin" style="display:none;">4. Admin</button>
+    </div>
+
+    <div id="tabChecklist" class="tab-content" style="display: block;">
+      <div class="conferencia-layout-container">
+        
+        <aside class="conferencia-coluna-esquerda">
+          <div class="seletor-grupo">
+            <label for="seletorData">Data</label>
+            <input type="date" id="seletorData">
+          </div>
+          <div class="seletor-grupo">
+            <label for="seletorSite">Site</label>
+            <select id="seletorSite"></select>
+          </div>
+          <div class="seletor-grupo">
+            <label for="seletorCategoria">Categoria</label>
+            <select id="seletorCategoria" disabled><option>Selecione um site</option></select>
+          </div>
+          <div class="seletor-grupo">
+            <label for="seletorEquipamento">Equipamento / Item</label>
+            <select id="seletorEquipamento" disabled><option>Selecione uma categoria</option></select>
+          </div>
+          
+          <hr style="border:0; border-top:1px dashed var(--border); margin: 20px 0;">
+          
+          <div class="actions-row" style="justify-content: center;">
+             <button id="exportJsonBtn" class="btn" title="Backup Completo">💾 Baixar Backup</button>
+             <button id="importJsonBtn" class="btn" title="Restaurar Backup">📂 Restaurar</button>
+             <input type="file" id="importJsonInput" accept=".json" style="display:none;">
+          </div>
+        </aside>
+
+        <main class="conferencia-coluna-direita">
+          <div id="areaTabela" style="display:none;">
+            <div class="actions-row" style="justify-content: space-between;">
+              <div style="display:flex; gap:8px; flex-grow: 1;">
+                <input type="text" id="searchInput" placeholder="Buscar item..." class="auth-container" style="padding:8px; width:100%; max-width:250px; margin:0;">
+                <select id="filterStatus" class="auth-container" style="padding:8px; width:auto; margin:0;">
+                  <option value="">Todos</option>
+                  <option value="pendente">Pendentes</option>
+                  <option value="ok">OK</option>
+                  <option value="erro">Erros</option>
+                </select>
+              </div>
+              <div style="display:flex; gap:8px;">
+                  <button id="btnMarkAllOk" class="btn btn-primary">Marcar Visíveis OK</button>
+              </div>
+            </div>
+
+            <div style="background:var(--panel-alt); padding:12px; border-radius:8px; margin-bottom:12px; display:flex; align-items:center; gap:12px; border:1px solid var(--border);">
+              <div style="flex-grow:1;">
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; font-weight:700;">
+                  <span id="progressText">0/0 Conferidos</span>
+                  <span id="healthText">0% Saúde</span>
+                </div>
+                <div class="bi-progress-bar" style="margin:0; height:8px;"><div id="localProgressBar" class="bi-progress-fill" style="width:0%"></div></div>
+              </div>
+            </div>
+
+            <div class="container-tabela">
+              <h3 id="tituloTabela" style="padding:16px; margin:0; border-bottom:1px solid var(--border);"></h3>
+              <table id="tabelaCameras">
+                <thead>
+                  <tr>
+                    <th style="width:40%">Item</th>
+                    <th style="width:40%">Status</th>
+                    <th style="width:20%">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="listaCameras"></tbody>
+              </table>
+            </div>
+            
+            <div style="margin-top:16px; text-align:right;">
+              <button id="resetBtnChecklist" class="btn btn-danger">Limpar Lista Atual</button>
+            </div>
+          </div>
+          
+          <div id="emptyState" style="text-align:center; padding:40px; color:var(--muted);">
+            <div style="font-size:48px; margin-bottom:10px;">📋</div>
+            <p>Selecione um equipamento ao lado para começar.</p>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div id="tabBI" class="tab-content">
+      <div class="actions-row" style="justify-content: space-between;">
+        <h2>Dashboard Global</h2>
+        <button id="exportBiPdfBtn" class="btn btn-primary">Exportar PDF</button>
+      </div>
+      
+      <div id="dashboardArea">
+        <div class="bi-card-container">
+          <div class="bi-card ok">
+            <div class="bi-icon">✓</div>
+            <div class="bi-content">
+              <div class="numero" id="bi-ok">0</div>
+              <div class="label">Operacionais</div>
+            </div>
+          </div>
+          <div class="bi-card erro">
+            <div class="bi-icon">✕</div>
+            <div class="bi-content">
+              <div class="numero" id="bi-erro">0</div>
+              <div class="label">Com Defeito</div>
+            </div>
+          </div>
+          <div class="bi-card total">
+            <div class="bi-icon">!</div>
+            <div class="bi-content">
+              <div class="numero" id="bi-pendente">0</div>
+              <div class="label">Pendentes</div>
+            </div>
+          </div>
+        </div>
+
+        <h3>Saúde Geral do Site</h3>
+        <div class="bi-progress-bar" style="height:24px;">
+          <div id="bi-barra-saude" class="bi-progress-fill" style="width: 0%; display:flex; align-items:center; justify-content:center; color:white; font-size:12px; font-weight:bold;">0%</div>
+        </div>
+        
+        <div style="margin-top:24px;">
+          <h3>Detalhamento de Erros</h3>
+          <div id="bi-lista-erros" style="background:var(--panel-alt); padding:16px; border-radius:var(--radius);">
+            <span style="color:var(--muted);">Nenhum erro registrado.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tabRelatorio" class="tab-content">
+      <div class="actions-row" style="justify-content: space-between;">
+        <h2>Relatório Detalhado</h2>
+        <div style="display:flex; gap:8px;">
+           <button id="exportRelatorioCsvBtn" class="btn">Baixar CSV</button>
+           <button id="exportRelatorioPdfBtn" class="btn btn-primary">Baixar PDF</button>
+        </div>
+      </div>
+      <div id="relatorioArea" style="border:1px solid var(--border); padding:20px; border-radius:var(--radius); background:var(--panel); max-height:600px; overflow-y:auto;">
+        Selecione um site para ver o relatório.
+      </div>
+    </div>
+
+    <div id="tabAdmin" class="tab-content">
+      <div class="actions-row" style="justify-content: space-between;">
+        <h2>Gerenciar Catálogo</h2>
+        <button class="btn btn-primary" onclick="adminAddCategory()">+ Nova Categoria</button>
+      </div>
+      <p style="color:var(--muted); margin-bottom:20px;">Adicione, remova e configure a quantidade de equipamentos do sistema.</p>
+      
+      <div id="admin-content">
+        </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="profileModalBackdrop" class="modal-backdrop">
+  <div class="modal">
+    <h3>Editar Perfil</h3>
+    <label>Nova Senha</label>
+    <input type="password" id="profileNewPassword" placeholder="Deixe em branco para manter">
+    <div id="profileMessage" class="message"></div>
+    <div class="actions">
+      <button id="profileCancelBtn" class="btn">Cancelar</button>
+      <button id="profileSaveBtn" class="btn btn-primary">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// --- CONFIGURAÇÃO E DADOS ---
+const APP_KEY = 'appConferencia_v2';
+const SITES = ['Sumaré', 'Ribeirão Preto', 'Itapetininga', 'Manaus'];
+const STATUS_OPTIONS = [
+  { id: '', label: 'Pendente', type: 'pendente' },
+  { id: 'ok', label: 'OK (Funcionando)', type: 'ok' },
+  { id: 'erro-imagem', label: 'Erro: Imagem Ruim', type: 'erro' },
+  { id: 'erro-offline', label: 'Erro: Offline', type: 'erro' },
+  { id: 'erro-gravacao', label: 'Erro: Sem Gravação', type: 'erro' },
+  { id: 'erro-obstruida', label: 'Erro: Obstruída', type: 'erro' }
+];
+
+// Catálogo Inicial (Exemplo)
+const DEFAULT_CATALOG = {
+  "Câmeras": { items: { "Câmera Entrada": 1, "Câmera Corredor": 4, "Câmera Estacionamento": 2 } },
+  "Catracas": { items: { "Portaria A": 2, "Recepção": 1 } }
+};
+
+// --- ESTADO GLOBAL ---
+let state = {
+  user: null,
+  data: {}, // Estrutura: { "YYYY-MM-DD": { "Equipamento": { "cam_1": { status:..., note:... } } } }
+  catalog: DEFAULT_CATALOG
+};
+
+// --- UTILITÁRIOS ---
+const $ = (id) => document.getElementById(id);
+const escapeHTML = (str) => {
+  if (!str) return '';
+  return str.replace(/[&<>'"]/g, tag => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+  }[tag]));
+};
+const getHoje = () => new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+
+// --- ARMAZENAMENTO ---
+const Storage = {
+  load: () => {
+    try {
+      const saved = localStorage.getItem(APP_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        state.data = parsed.data || {};
+        state.catalog = parsed.catalog || DEFAULT_CATALOG;
+      }
+    } catch (e) { console.error("Erro ao carregar dados:", e); }
+  },
+  save: () => {
+    try {
+      localStorage.setItem(APP_KEY, JSON.stringify({ data: state.data, catalog: state.catalog }));
+    } catch (e) { alert("Erro: Armazenamento cheio! Limpe dados antigos."); }
+  }
+};
+
+// --- LÓGICA DE NEGÓCIO ---
+function getData(date, equip, itemId) {
+  if (!state.data[date]) state.data[date] = {};
+  if (!state.data[date][equip]) state.data[date][equip] = {};
+  if (!state.data[date][equip][itemId]) {
+    state.data[date][equip][itemId] = { status: '', note: '', user: '', ts: null };
+  }
+  return state.data[date][equip][itemId];
+}
+
+function updateItem(date, equip, itemId, fields) {
+  const item = getData(date, equip, itemId);
+  Object.assign(item, fields);
+  item.user = state.user;
+  item.ts = new Date().toISOString();
+  Storage.save();
+  renderStats(); // Atualiza estatísticas
+}
+
+// --- INTERFACE (UI) ---
+function renderSites() {
+  const sel = $('seletorSite');
+  sel.innerHTML = '<option value="">-- Selecione --</option>';
+  SITES.forEach(s => sel.innerHTML += `<option value="${s}">${s}</option>`);
+}
+
+function renderCategorias() {
+  const sel = $('seletorCategoria');
+  sel.innerHTML = '<option value="">-- Selecione --</option>';
+  sel.disabled = false;
+  Object.keys(state.catalog).forEach(c => sel.innerHTML += `<option value="${c}">${c}</option>`);
+}
+
+function renderEquipamentos(categoria) {
+  const sel = $('seletorEquipamento');
+  sel.innerHTML = '<option value="">-- Selecione --</option>';
+  sel.disabled = false;
+  const items = state.catalog[categoria]?.items || {};
+  Object.keys(items).forEach(equip => sel.innerHTML += `<option value="${equip}">${equip}</option>`);
+}
+
+function renderTabela() {
+  const equipName = $('seletorEquipamento').value;
+  const categoria = $('seletorCategoria').value;
+  const date = $('seletorData').value;
+  const filterVal = $('filterStatus').value;
+  const searchVal = $('searchInput').value.toLowerCase();
+
+  if (!equipName || !categoria || !date) {
+    $('areaTabela').style.display = 'none';
+    $('emptyState').style.display = 'block';
+    return;
+  }
+
+  $('areaTabela').style.display = 'block';
+  $('emptyState').style.display = 'none';
+  $('tituloTabela').textContent = equipName;
+
+  const count = state.catalog[categoria].items[equipName] || 0;
+  const tbody = $('listaCameras');
+  tbody.innerHTML = '';
+
+  let visibleCount = 0;
+
+  for (let i = 1; i <= count; i++) {
+    const itemId = `item_${i}`;
+    const itemData = getData(date, equipName, itemId);
+    const itemName = `${equipName} ${i < 10 ? '0'+i : i}`;
+
+    // Filtros
+    const statusObj = STATUS_OPTIONS.find(s => s.id === itemData.status) || STATUS_OPTIONS[0];
+    if (filterVal && statusObj.type !== filterVal && !(filterVal === 'pendente' && !itemData.status)) continue;
+    if (searchVal && !itemName.toLowerCase().includes(searchVal)) continue;
+
+    visibleCount++;
+
+    const tr = document.createElement('tr');
+    if (statusObj.type === 'ok') tr.classList.add('status-ok');
+    if (statusObj.type === 'erro') tr.classList.add('status-erro');
+
+    // Coluna Nome
+    const tdName = document.createElement('td');
+    tdName.setAttribute('data-label', 'Item');
+    tdName.textContent = itemName;
+    if (itemData.note) {
+       const noteSpan = document.createElement('span');
+       noteSpan.className = 'note-indicator';
+       noteSpan.textContent = '📝';
+       noteSpan.title = itemData.note;
+       tdName.appendChild(noteSpan);
+    }
+
+    // Coluna Status
+    const tdStatus = document.createElement('td');
+    tdStatus.setAttribute('data-label', 'Status');
+    const select = document.createElement('select');
+    select.className = 'seletor-status';
+    STATUS_OPTIONS.forEach(opt => {
+      const option = document.createElement('option');
+      option.value = opt.id;
+      option.textContent = (opt.type === 'ok' ? '✅ ' : (opt.type === 'erro' ? '❌ ' : '')) + opt.label;
+      if (opt.id === itemData.status) option.selected = true;
+      select.appendChild(option);
+    });
+    select.onchange = (e) => {
+      updateItem(date, equipName, itemId, { status: e.target.value });
+      renderTabela(); // Re-render para atualizar cores
+    };
+    tdStatus.appendChild(select);
+
+    // Coluna Ações
+    const tdActions = document.createElement('td');
+    tdActions.setAttribute('data-label', 'Ações');
+    const btnNote = document.createElement('button');
+    btnNote.className = 'action-btn-sm';
+    btnNote.textContent = itemData.note ? 'Editar Nota' : '+ Nota';
+    btnNote.onclick = () => {
+      const note = prompt("Observação para " + itemName + ":", itemData.note);
+      if (note !== null) {
+        updateItem(date, equipName, itemId, { note: note });
+        renderTabela();
+      }
+    };
+    tdActions.appendChild(btnNote);
+
+    tr.append(tdName, tdStatus, tdActions);
+    tbody.appendChild(tr);
+  }
+  renderStats();
+}
+
+function renderStats() {
+  const equipName = $('seletorEquipamento').value;
+  const date = $('seletorData').value;
+  const categoria = $('seletorCategoria').value;
+  
+  if(!equipName || !categoria) return;
+
+  const count = state.catalog[categoria].items[equipName] || 0;
+  let checked = 0, ok = 0;
+  
+  for(let i=1; i<=count; i++) {
+    const d = getData(date, equipName, `item_${i}`);
+    if(d.status) {
+      checked++;
+      if(d.status === 'ok') ok++;
+    }
+  }
+
+  const pct = checked > 0 ? Math.round((ok/checked)*100) : 0;
+  $('progressText').textContent = `${checked}/${count} Conferidos`;
+  $('healthText').textContent = `${pct}% Saúde`;
+  $('localProgressBar').style.width = `${(checked/count)*100}%`;
+  $('localProgressBar').style.backgroundColor = pct < 70 ? 'var(--erro)' : 'var(--ok)';
+}
+
+function renderDashboard() {
+  const date = $('seletorData').value;
+  const site = $('seletorSite').value;
+  
+  let totalOk = 0, totalErro = 0, totalPend = 0;
+  let errorMap = {};
+
+  if(site) {
+    Object.keys(state.catalog).forEach(cat => {
+      const items = state.catalog[cat].items;
+      Object.keys(items).forEach(eq => {
+        const count = items[eq];
+        for(let i=1; i<=count; i++){
+           const d = getData(date, eq, `item_${i}`);
+           if(!d.status) totalPend++;
+           else if(d.status === 'ok') totalOk++;
+           else {
+             totalErro++;
+             errorMap[d.status] = (errorMap[d.status] || 0) + 1;
+           }
+        }
+      });
+    });
+  }
+
+  $('bi-ok').textContent = totalOk;
+  $('bi-erro').textContent = totalErro;
+  $('bi-pendente').textContent = totalPend;
+  
+  const total = totalOk + totalErro;
+  const saude = total > 0 ? Math.round((totalOk/total)*100) : 0;
+  const barra = $('bi-barra-saude');
+  barra.style.width = `${saude}%`;
+  barra.textContent = `${saude}%`;
+  barra.style.backgroundColor = saude < 70 ? 'var(--erro)' : 'var(--ok)';
+
+  const listaErros = $('bi-lista-erros');
+  if(totalErro === 0) {
+    listaErros.innerHTML = '<span style="color:var(--muted);">Nenhum erro registrado.</span>';
+  } else {
+    listaErros.innerHTML = '';
+    Object.entries(errorMap).forEach(([k, v]) => {
+       const label = STATUS_OPTIONS.find(s => s.id === k)?.label || k;
+       listaErros.innerHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>${label}</span> <strong>${v}</strong></div>`;
+    });
+  }
+}
+
+function renderRelatorio() {
+  const area = $('relatorioArea');
+  const date = $('seletorData').value;
+  const site = $('seletorSite').value;
+
+  if(!site) {
+    area.innerHTML = 'Selecione um site primeiro.';
+    return;
+  }
+
+  let html = `<h3>Relatório: ${site} (${date})</h3>`;
+  let hasData = false;
+
+  Object.keys(state.catalog).forEach(cat => {
+    html += `<h4>${cat}</h4>`;
+    const items = state.catalog[cat].items;
+    Object.keys(items).forEach(eq => {
+      const count = items[eq];
+      let eqHtml = `<div style="margin-bottom:10px;"><strong>${eq}</strong><ul style="list-style:none; padding-left:10px;">`;
+      let eqHasData = false;
+      
+      for(let i=1; i<=count; i++){
+         const d = getData(date, eq, `item_${i}`);
+         if(d.status && d.status !== 'ok') {
+           eqHasData = true;
+           hasData = true;
+           const stLabel = STATUS_OPTIONS.find(s=>s.id===d.status)?.label;
+           eqHtml += `<li style="border-bottom:1px solid #eee; padding:4px 0;">
+             Item ${i}: <span style="color:red; font-weight:bold;">${stLabel}</span>
+             ${d.note ? `<br><small>Obs: ${escapeHTML(d.note)}</small>` : ''}
+             <br><small style="color:#999;">Por: ${escapeHTML(d.user)} às ${new Date(d.ts).toLocaleTimeString()}</small>
+           </li>`;
+         }
+      }
+      eqHtml += '</ul></div>';
+      if(eqHasData) html += eqHtml;
+    });
+  });
+
+  if(!hasData) html += "<p>Nenhum dado conferido encontrado para esta data.</p>";
+  area.innerHTML = html;
+}
+
+// --- FUNÇÕES DO PAINEL DE ADMIN ---
+function renderAdmin() {
+  const container = $('admin-content');
+  container.innerHTML = '';
+
+  Object.keys(state.catalog).forEach(catName => {
+    // Criação do cartão da categoria
+    const catDiv = document.createElement('div');
+    catDiv.className = 'container-tabela';
+    catDiv.style.marginBottom = '20px';
+    catDiv.style.padding = '20px';
+    
+    let itemsHtml = '';
+    const items = state.catalog[catName].items;
+
+    // Lista de itens dessa categoria
+    Object.keys(items).forEach(itemName => {
+        const qty = items[itemName];
+        itemsHtml += `
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding:8px 0;">
+            <span>${itemName}</span>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <label style="font-size:12px; color:var(--muted);">Qtd:</label>
+              <input type="number" min="1" value="${qty}" 
+                style="width:60px; padding:5px; border-radius:6px; border:1px solid var(--border);"
+                onchange="adminUpdateQty('${catName}', '${itemName}', this.value)">
+              <button class="action-btn-sm" style="color:var(--erro);" onclick="adminDeleteItem('${catName}', '${itemName}')">Excluir</button>
+            </div>
+          </div>
+        `;
+    });
+
+    catDiv.innerHTML = `
+      <div style="display:flex; justify-content:space-between; margin-bottom:15px; align-items:center;">
+         <h3 style="margin:0;">${catName}</h3>
+         <button class="btn btn-danger" onclick="adminDeleteCategory('${catName}')">Apagar Categoria</button>
+      </div>
+      <div style="background:var(--panel-alt); padding:10px; border-radius:8px;">
+         ${itemsHtml}
+         <div style="margin-top:15px; display:flex; gap:10px;">
+           <input type="text" id="new-item-${catName}" placeholder="Novo equipamento..." class="auth-container" style="margin:0; flex:1; padding:8px;">
+           <button class="btn btn-primary" onclick="adminAddItem('${catName}')">Adicionar</button>
+         </div>
+      </div>
+    `;
+    container.appendChild(catDiv);
+  });
+}
+
+// Lógica Admin (Modifica state.catalog e Salva)
+window.adminAddCategory = () => {
+    const name = prompt("Nome da nova Categoria:");
+    if(name && !state.catalog[name]) {
+        state.catalog[name] = { items: {} };
+        Storage.save();
+        renderAdmin();
+        renderCategorias(); // Atualiza seletores
+    }
+};
+
+window.adminDeleteCategory = (cat) => {
+    if(confirm(`Tem certeza que deseja apagar a categoria "${cat}" e todos os seus itens?`)) {
+        delete state.catalog[cat];
+        Storage.save();
+        renderAdmin();
+        renderCategorias();
+    }
+};
+
+window.adminAddItem = (cat) => {
+    const input = $(`new-item-${cat}`);
+    const name = input.value;
+    if(name) {
+        state.catalog[cat].items[name] = 1; // Quantidade inicial 1
+        Storage.save();
+        renderAdmin();
+        // Se estiver selecionado no checklist, atualiza
+        if($('seletorCategoria').value === cat) renderEquipamentos(cat);
+    }
+};
+
+window.adminDeleteItem = (cat, item) => {
+    if(confirm(`Apagar o item "${item}"?`)) {
+        delete state.catalog[cat].items[item];
+        Storage.save();
+        renderAdmin();
+    }
+};
+
+window.adminUpdateQty = (cat, item, newQty) => {
+    state.catalog[cat].items[item] = parseInt(newQty);
+    Storage.save();
+    // Não recarrega a view toda para não perder foco do input
+};
+
+
+// --- EVENTOS ---
+document.addEventListener('DOMContentLoaded', () => {
+  Storage.load();
+  
+  // Fallback Imagem
+  const img = $('headerLogo');
+  img.onerror = function() {
+    this.style.display = 'none';
+    this.parentElement.innerHTML = '<span class="brand-fallback">3M</span>';
+  };
+
+  // Auth Fake (Modificado para Admin Específico)
+  $('login-form').onsubmit = (e) => {
+    e.preventDefault();
+    const u = $('login-username').value;
+    if(u) {
+      state.user = u;
+      $('auth-page').style.display = 'none';
+      $('app-page').style.display = 'block';
+      $('user-display-name').textContent = u;
+      $('seletorData').value = getHoje();
+      renderSites();
+      
+      // VERIFICAÇÃO DE ADMIN
+      if(u === 'admin' || u === 'ygramos.cw@mmm.com') {
+         $('tabBtnAdmin').style.display = 'block';
+      }
+    }
+  };
+  
+  $('logout-btn').onclick = () => location.reload();
+
+  // Tabs
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+      btn.classList.add('active');
+      $(btn.dataset.target).style.display = 'block';
+      
+      // Atualiza views específicas
+      if(btn.dataset.target === 'tabBI') renderDashboard();
+      if(btn.dataset.target === 'tabRelatorio') renderRelatorio();
+      if(btn.dataset.target === 'tabAdmin') renderAdmin(); // Renderiza painel admin
+    };
+  });
+
+  // Seletores
+  $('seletorSite').onchange = renderCategorias;
+  $('seletorCategoria').onchange = () => renderEquipamentos($('seletorCategoria').value);
+  $('seletorEquipamento').onchange = renderTabela;
+  $('seletorData').onchange = () => { renderTabela(); };
+
+  // Filtros e Busca
+  $('searchInput').oninput = renderTabela;
+  $('filterStatus').onchange = renderTabela;
+
+  // Ações em Massa
+  $('btnMarkAllOk').onclick = () => {
+    const equip = $('seletorEquipamento').value;
+    const cat = $('seletorCategoria').value;
+    const date = $('seletorData').value;
+    if(!equip || !confirm("Marcar todos os itens VISÍVEIS como OK?")) return;
+    
+    const count = state.catalog[cat].items[equip];
+    for(let i=1; i<=count; i++){
+       updateItem(date, equip, `item_${i}`, { status: 'ok' });
+    }
+    renderTabela();
+  };
+
+  $('resetBtnChecklist').onclick = () => {
+     if(confirm("Tem certeza? Isso apagará a conferência deste equipamento para hoje.")) {
+       const equip = $('seletorEquipamento').value;
+       const date = $('seletorData').value;
+       if(state.data[date] && state.data[date][equip]) {
+         delete state.data[date][equip];
+         Storage.save();
+         renderTabela();
+       }
+     }
+  };
+
+  // Exportação Backup JSON
+  $('exportJsonBtn').onclick = () => {
+    const blob = new Blob([JSON.stringify(state)], {type: "application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backup_conferencia_${getHoje()}.json`;
+    a.click();
+  };
+  
+  $('importJsonBtn').onclick = () => $('importJsonInput').click();
+  $('importJsonInput').onchange = (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const loaded = JSON.parse(evt.target.result);
+        if(loaded.data) {
+           state = loaded;
+           Storage.save();
+           alert("Importado com sucesso!");
+           location.reload();
+        }
+      } catch(err) { alert("Arquivo inválido"); }
+    };
+    reader.readAsText(file);
+  };
+
+  // Tema
+  const themeBtn = $('themeToggleBtn');
+  themeBtn.onclick = () => {
+    const curr = document.documentElement.getAttribute('data-theme');
+    const next = curr === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    themeBtn.textContent = next === 'dark' ? '🌙' : '☀️';
+  };
+
+  // Inicialização de View
+  renderSites();
+});
+</script>
+</body>
+</html>

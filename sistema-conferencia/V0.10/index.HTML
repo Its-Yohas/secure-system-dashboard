@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure System v10.5 (Modular)</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+    <div id="toast">Ação Salva</div>
+
+    <div id="modal-photo" class="modal-mask" onclick="this.style.display='none'">
+        <img id="modal-img-tag" class="modal-img-content" src="">
+    </div>
+
+    <div id="modal-os" class="modal-mask">
+        <div class="modal-box">
+            <h3 style="color:var(--primary)"><i class="fas fa-tools"></i> Abrir O.S.</h3>
+            <p style="font-size:13px; margin-bottom:15px; color:#666">Detectamos um erro. Deseja abrir um chamado técnico para este item?</p>
+            
+            <input type="hidden" id="os-input-equip-id">
+            
+            <label>Descrição do Defeito</label>
+            <textarea id="os-input-desc" placeholder="Ex: Câmera sem sinal, Lente suja, Cabo rompido..."></textarea>
+            
+            <label>Prioridade</label>
+            <select id="os-input-prio">
+                <option value="baixa">Baixa (Pode aguardar)</option>
+                <option value="media">Média (Verificar em breve)</option>
+                <option value="alta">Alta (Crítico / Segurança Comprometida)</option>
+            </select>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px">
+                <button class="btn btn-dark" onclick="OS.closeModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="OS.create()">ABRIR O.S.</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="login-screen" style="position:fixed; inset:0; background:var(--sidebar); z-index:3000; display:flex; justify-content:center; align-items:center;">
+        <div class="login-box" style="background:var(--card); padding:40px; width:350px; border-radius:8px; text-align:center;">
+            <div style="font-size:40px; color:var(--primary); margin-bottom:10px"><i class="fas fa-shield-alt"></i></div>
+            <h2 style="margin-bottom:20px;">Acesso Admin</h2>
+            <input id="login-user" placeholder="admin">
+            <input type="password" id="login-pass" placeholder="123">
+            <button class="btn btn-primary" style="width:100%" onclick="Auth.login()">ENTRAR</button>
+        </div>
+    </div>
+
+    <input type="file" id="hidden-photo-input" accept="image/*" style="display:none" onchange="AdmInst.processPhoto(this)">
+
+    <nav class="sidebar">
+        <div class="sidebar-header"><i class="fas fa-shield-alt"></i> SECURE SYS v10.5</div>
+        <div class="menu-scroll">
+            <div class="menu-btn active" onclick="Nav.go('hero')"><i class="fas fa-home"></i> Início</div>
+            
+            <div class="menu-btn" onclick="Nav.toggleSub('sub-admin')">
+                <i class="fas fa-cogs"></i> Administração <i class="fas fa-chevron-down" style="margin-left:auto; font-size:10px"></i>
+            </div>
+            <div id="sub-admin" class="submenu">
+                <div class="sub-btn" onclick="Nav.go('admin-sites')">1. Sites (Locais)</div>
+                <div class="sub-btn" onclick="Nav.go('admin-types')">2. Catálogo Tipos</div>
+                <div class="sub-btn" onclick="Nav.go('admin-equips')">3. Instalação</div>
+            </div>
+
+            <div class="menu-btn" onclick="Nav.go('checklist-cctv')"><i class="fas fa-video"></i> Checklist CCTV</div>
+            <div class="menu-btn" onclick="Nav.go('checklist-eq')"><i class="fas fa-tasks"></i> Checklist Equip.</div>
+            
+            <div class="menu-btn" onclick="Nav.go('os')"><i class="fas fa-tools"></i> O.S. Manutenção</div>
+            <div class="menu-btn" onclick="Nav.go('reports')"><i class="fas fa-file-alt"></i> Relatórios</div>
+        </div>
+        <div class="sidebar-footer">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; margin-bottom:10px">
+                <button class="btn btn-dark btn-sm" onclick="DB.export()"><i class="fas fa-download"></i> Backup</button>
+                <label class="btn btn-dark btn-sm" style="margin:0; cursor:pointer; text-align:center">
+                    <i class="fas fa-upload"></i> Restaurar
+                    <input type="file" style="display:none" onchange="DB.import(this)" accept=".json">
+                </label>
+            </div>
+            <button class="btn btn-danger" style="width:100%; font-size:11px" onclick="DB.reset()"><i class="fas fa-trash"></i> RESETAR TUDO</button>
+        </div>
+    </nav>
+
+    <main class="main">
+        <div class="topbar">
+            <h3>Bem-vindo</h3>
+            <button class="btn btn-dark" onclick="App.toggleTheme()"><i class="fas fa-adjust"></i> Tema</button>
+        </div>
+
+        <div id="view-hero" class="view active" style="padding:0">
+            <div style="width:100%; height:100%; background: url('https://images.unsplash.com/photo-1581092921461-eab62496096b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80') center/cover; position:relative;">
+                <div style="position:absolute; inset:0; background: linear-gradient(135deg, rgba(0, 167, 157, 0.9), rgba(30, 200, 180, 0.6)); display:flex; flex-direction:column; justify-content:center; padding-left:60px; color:white;">
+                    <h1 style="font-size:48px; font-weight:800; margin-bottom:10px">Sistema Integrado</h1>
+                    <p style="font-size:22px; opacity:0.9">Gestão de Ativos e O.S.</p>
+                    <div style="margin-top:30px; display:flex; gap:20px">
+                        <div class="card" style="background:rgba(0,0,0,0.5); color:white; border:1px solid rgba(255,255,255,0.2); min-width:150px; text-align:center">
+                            <div style="font-size:30px; font-weight:bold" id="dash-check">0</div>
+                            <div style="font-size:12px; opacity:0.8">ITENS HOJE</div>
+                        </div>
+                        <div class="card" style="background:rgba(239, 68, 68, 0.6); color:white; border:1px solid rgba(255,255,255,0.2); min-width:150px; text-align:center">
+                            <div style="font-size:30px; font-weight:bold" id="dash-os">0</div>
+                            <div style="font-size:12px; opacity:0.8">O.S. ABERTAS</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-admin-sites" class="view container-pad">
+            <div class="card">
+                <h2 style="color:var(--primary)">1. Gerenciar Sites</h2>
+                <div style="display:flex; gap:10px; margin-bottom:20px">
+                    <input id="site-name" placeholder="Nome do Local" style="margin:0">
+                    <button class="btn btn-primary" onclick="AdmSites.add()">Adicionar</button>
+                </div>
+                <ul id="site-list" class="list-group"></ul>
+            </div>
+        </div>
+
+        <div id="view-admin-types" class="view container-pad">
+            <div class="card">
+                <h2 style="color:var(--primary)">2. Catálogo de Tipos</h2>
+                <div style="display:flex; gap:10px; margin-bottom:20px">
+                    <div style="flex:2"><input id="type-name" placeholder="Ex: Câmera IP, Catraca" style="margin:0"></div>
+                    <div style="flex:1"><select id="type-cat" style="margin:0"><option value="video">Vídeo</option><option value="other">Outros</option></select></div>
+                    <button class="btn btn-primary" onclick="AdmTypes.add()">Adicionar</button>
+                </div>
+                <ul id="type-list" class="list-group"></ul>
+            </div>
+        </div>
+
+        <div id="view-admin-equips" class="view container-pad">
+            <h2 style="margin-bottom:20px; color:var(--primary)">3. Instalação</h2>
+            <div class="card" style="border-left: 5px solid var(--primary)">
+                <label>PASSO 1: Local</label>
+                <select id="eq-site-select" onchange="AdmInst.onSiteChange()" style="margin:0"></select>
+            </div>
+            <div id="eq-panel" style="display:none; height: calc(100vh - 250px);">
+                <div class="grid-3-col">
+                    <div class="card" style="display:flex; flex-direction:column">
+                        <h4>PASSO 2: Tipo</h4>
+                        <ul id="catalog-list" class="list-group" style="flex:1; overflow-y:auto"></ul>
+                    </div>
+                    <div class="card" style="display:flex; flex-direction:column; border-color:var(--primary)">
+                        <h4 id="group-col-title">PASSO 3: Configurar</h4>
+                        <div id="create-group-form" style="display:none; background:rgba(0,167,157,0.1); padding:15px; border-radius:6px; margin-bottom:15px;">
+                            <label>Nome Grupo</label><input id="group-name-in" placeholder="Ex: Câmeras Hall">
+                            <label>Qtd Inicial</label><div style="display:flex; gap:5px"><input type="number" id="group-qty-in" value="1" min="1"><button class="btn btn-primary" onclick="AdmInst.createGroup()">Criar</button></div>
+                        </div>
+                        <ul id="group-list" class="list-group" style="flex:1; overflow-y:auto"></ul>
+                    </div>
+                    <div class="card" style="display:flex; flex-direction:column">
+                        <h4>PASSO 4: Itens</h4>
+                        <div id="item-list-box" style="display:none; flex:1; flex-direction:column">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:10px"><small>Editar:</small><button class="btn btn-sm btn-primary" onclick="AdmInst.addOneMore()">+1</button></div>
+                            <ul id="item-list" class="list-group" style="flex:1; overflow-y:auto"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-checklist-cctv" class="view container-pad">
+            <div class="card no-print">
+                <div style="display:flex; gap:10px; align-items:flex-end;">
+                    <div style="flex:1"><label>Data</label><input type="date" id="cctv-date" style="margin:0" onchange="ChecklistCCTV.clear()"></div>
+                    <div style="flex:1"><label>Site</label><select id="cctv-site" style="margin:0" onchange="ChecklistCCTV.onSiteChange()"></select></div>
+                    <div style="flex:1"><label>Grupo</label><select id="cctv-group" disabled style="margin:0"></select></div>
+                    <button class="btn btn-primary" style="height:42px" onclick="ChecklistCCTV.load()">Carregar</button>
+                </div>
+            </div>
+            <div id="cctv-container" style="padding-bottom:50px"></div>
+        </div>
+
+        <div id="view-checklist-eq" class="view container-pad">
+            <div class="card no-print">
+                <div style="display:flex; gap:10px; align-items:flex-end;">
+                    <div style="flex:1"><label>Data</label><input type="date" id="eq-date" style="margin:0" onchange="ChecklistEq.clear()"></div>
+                    <div style="flex:1"><label>Site</label><select id="eq-site" style="margin:0" onchange="ChecklistEq.onSiteChange()"></select></div>
+                    <div style="flex:1"><label>Grupo</label><select id="eq-group" disabled style="margin:0"></select></div>
+                    <button class="btn btn-primary" style="height:42px" onclick="ChecklistEq.load()">Carregar</button>
+                </div>
+            </div>
+            <div id="eq-container" style="padding-bottom:50px"></div>
+        </div>
+
+        <div id="view-os" class="view container-pad">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px">
+                <h2 style="margin:0; color:var(--primary)">Gestão de Ordens de Serviço</h2>
+                <div style="display:flex; gap:10px">
+                    <select id="os-filter-site" style="width:200px; margin:0" onchange="OS.render()">
+                        <option value="">Todos os Locais</option>
+                    </select>
+                    <button class="btn btn-dark" onclick="OS.render()"><i class="fas fa-sync"></i></button>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card" style="background:#fff3cd; border:1px solid #ffeeba">
+                    <h4 style="color:#856404"><i class="fas fa-exclamation-circle"></i> Pendentes / Em Aberto</h4>
+                    <div id="os-list-open" style="min-height:200px"></div>
+                </div>
+
+                <div class="card" style="background:#d1e7dd; border:1px solid #badbcc">
+                    <h4 style="color:#0f5132"><i class="fas fa-check-circle"></i> Histórico / Concluídas</h4>
+                    <div id="os-list-done" style="max-height:600px; overflow-y:auto"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-reports" class="view container-pad">
+            <div class="print-header">
+                <h2 style="text-align:center; border:none; margin-bottom:5px">RELATÓRIO TÉCNICO</h2>
+                <div style="text-align:center; font-size:12px; color:#555" id="print-date-info"></div>
+            </div>
+            <div class="card no-print">
+                <h2 style="color:var(--primary)">Configuração Relatório</h2>
+                <div class="grid-2" style="margin-bottom:15px">
+                    <div><label>Data</label><input type="date" id="rep-date"></div>
+                    <div><label>Site</label><select id="rep-site" onchange="Reports.onSiteChange()"></select></div>
+                </div>
+                <div id="rep-tree-view" class="tree-box">
+                    <div style="padding:20px; text-align:center; color:#888">Selecione um local.</div>
+                </div>
+                <button class="btn btn-primary" style="width:100%; margin-top:15px" onclick="Reports.generate()">Gerar Relatório</button>
+            </div>
+            <div id="rep-results" style="display:none">
+                <div class="grid-3-col" style="height:auto; margin-bottom:20px">
+                    <div class="card" style="text-align:center"><div style="font-size:28px; font-weight:800; color:var(--primary)" id="kpi-total">0</div><small>VERIFICADOS</small></div>
+                    <div class="card" style="text-align:center"><div style="font-size:28px; font-weight:800; color:#ef4444" id="kpi-fail">0</div><small>FALHAS</small></div>
+                    <div class="card" style="text-align:center"><div style="font-size:28px; font-weight:800; color:#10b981" id="kpi-ok">0%</div><small>OPERACIONAL</small></div>
+                </div>
+                <div class="card">
+                    <h4>Detalhamento</h4>
+                    <table style="width:100%; border-collapse:collapse; font-size:13px">
+                        <thead><tr style="border-bottom:2px solid #ddd; text-align:left"><th>Item</th><th>Status</th><th>Obs</th></tr></thead>
+                        <tbody id="rep-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
